@@ -1,9 +1,16 @@
 import 'package:flutter/material.dart';
 import 'pages/welcome_page.dart';
+import 'package:device_preview/device_preview.dart';
 import 'pages/home_page.dart';
+import 'pages/signin_page.dart';
+import 'pages/signup_page.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(
+    DevicePreview(
+      builder: (context) => const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -21,6 +28,8 @@ class MyApp extends StatelessWidget {
       home: const WelcomePage(),
       routes: {
         '/home': (context) => const HomePage(),
+        '/signin': (context) => const SignInPage(),
+        '/signup': (context) => const SignUpPage(),
       },
     );
   }

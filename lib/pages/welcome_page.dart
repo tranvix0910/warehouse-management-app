@@ -25,14 +25,14 @@ class _WelcomePageState extends State<WelcomePage> {
         curve: Curves.easeInOut,
       );
     } else {
-      // Navigate to main app
-      Navigator.of(context).pushReplacementNamed('/home');
+      // Navigate to sign in page
+      Navigator.of(context).pushReplacementNamed('/signin');
     }
   }
 
   void _skipToEnd() {
-    // Navigate to main app
-    Navigator.of(context).pushReplacementNamed('/home');
+    // Navigate to sign in page
+    Navigator.of(context).pushReplacementNamed('/signin');
   }
 
   @override
