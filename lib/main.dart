@@ -4,6 +4,7 @@ import 'package:device_preview/device_preview.dart';
 import 'pages/home_page.dart';
 import 'pages/signin_page.dart';
 import 'pages/signup_page.dart';
+import 'pages/main_layout.dart';
 
 void main() {
   runApp(
@@ -26,10 +27,12 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
       ),
       home: const WelcomePage(),
-      routes: {
+      routes: 
+      {
         '/home': (context) => const HomePage(),
+        '/main': (context) => const MainLayout(),
         '/signin': (context) => const SignInPage(),
-        '/signup': (context) => const SignUpPage(),
+        '/signup': (context) => const SignUpPage(), 
       },
     );
   }

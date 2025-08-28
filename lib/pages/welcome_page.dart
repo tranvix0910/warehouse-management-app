@@ -94,7 +94,7 @@ class _WelcomePageState extends State<WelcomePage> {
                       borderRadius: BorderRadius.circular(4.0),
                       color: _currentPage == index
                           ? const Color(0xFF4A90E2)
-                          : Colors.grey.withOpacity(0.3),
+                          : Colors.grey.withValues(alpha: 0.3),
                     ),
                   ),
                 ),
@@ -166,7 +166,7 @@ class OnboardingPageWidget extends StatelessWidget {
                   return Container(
                     height: 300,
                     decoration: BoxDecoration(
-                      color: Colors.grey.withOpacity(0.2),
+                      color: Colors.grey.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(20.0),
                     ),
                     child: const Center(

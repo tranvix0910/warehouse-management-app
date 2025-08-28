@@ -26,38 +26,46 @@ class _SignUpPageState extends State<SignUpPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFF2D2D2D),
+      resizeToAvoidBottomInset: true,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              const SizedBox(height: 16),
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight - 32, // Account for padding
+                ),
+                child: IntrinsicHeight(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+              SizedBox(height: constraints.maxHeight > 600 ? 16 : 8),
               
               // Logo and App Name
               Column(
                 children: [
                   SizedBox(
-                    width: 80,
-                    height: 80,
+                    width: constraints.maxHeight > 600 ? 80 : 60,
+                    height: constraints.maxHeight > 600 ? 80 : 60,
                     child: Image.asset(
                       'assets/images/sign_in_up_page/1.png',
                       fit: BoxFit.contain,
                       errorBuilder: (context, error, stackTrace) {
-                        return const Icon(
+                        return Icon(
                           Icons.inventory_2,
-                          color: Color(0xFF4A90E2),
-                          size: 60,
+                          color: const Color(0xFF4A90E2),
+                          size: constraints.maxHeight > 600 ? 60 : 45,
                         );
                       },
                     ),
                   ),
-                  const SizedBox(height: 12),
-                  const Text(
+                  SizedBox(height: constraints.maxHeight > 600 ? 12 : 8),
+                  Text(
                     'Nagav Inventory',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 28,
+                      fontSize: constraints.maxHeight > 600 ? 28 : 24,
                       fontWeight: FontWeight.bold,
                       letterSpacing: -0.5,
                     ),
@@ -65,7 +73,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ],
               ),
               
-              const SizedBox(height: 20),
+              SizedBox(height: constraints.maxHeight > 600 ? 20 : 16),
               
               // Tab Buttons
               Container(
@@ -195,7 +203,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ],
               ),
               
-              const SizedBox(height: 12),
+              SizedBox(height: constraints.maxHeight > 600 ? 12 : 8),
               
               // Username Field
               Column(
@@ -237,7 +245,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ],
               ),
               
-              const SizedBox(height: 12),
+              SizedBox(height: constraints.maxHeight > 600 ? 12 : 8),
               
               // Password Field
               Column(
@@ -291,7 +299,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 ],
               ),
               
-              const SizedBox(height: 12),
+              SizedBox(height: constraints.maxHeight > 600 ? 12 : 8),
               
               // Terms and Conditions Checkbox
               Row(
@@ -358,7 +366,9 @@ class _SignUpPageState extends State<SignUpPage> {
                 ],
               ),
               
-              const Spacer(),
+              const Expanded(
+                child: SizedBox(height: 20),
+              ),
               
               // Sign Up Button
               SizedBox(
@@ -367,7 +377,7 @@ class _SignUpPageState extends State<SignUpPage> {
                 child: ElevatedButton(
                   onPressed: _acceptTerms ? () {
                     // Handle sign up
-                    Navigator.pushReplacementNamed(context, '/home');
+                    Navigator.pushReplacementNamed(context, '/main');
                   } : null,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: _acceptTerms ? const Color(0xFF4A90E2) : Colors.grey[600],
@@ -405,9 +415,13 @@ class _SignUpPageState extends State<SignUpPage> {
                 ),
               ),
               
-              const SizedBox(height: 16),
-            ],
-          ),
+              const SizedBox(height: 32),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
