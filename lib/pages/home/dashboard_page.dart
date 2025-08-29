@@ -6,7 +6,7 @@ class DashboardPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF1A1A1A),
+      backgroundColor: const Color(0xFF0F172A),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20),
@@ -39,7 +39,7 @@ class DashboardPage extends StatelessWidget {
       children: [
         CircleAvatar(
           radius: 25,
-          backgroundColor: Colors.blue,
+          backgroundColor: const Color(0xFF3B82F6),
           child: ClipOval(
             child: Image.asset(
               'assets/images/avatar.png', // You'll need to add this image
@@ -91,7 +91,7 @@ class DashboardPage extends StatelessWidget {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF4A90E2), Color(0xFF357ABD)],
+          colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
@@ -185,7 +185,7 @@ class DashboardPage extends StatelessWidget {
           width: 50,
           height: 50,
           decoration: BoxDecoration(
-            color: const Color(0xFF2A2A2A),
+            color: const Color(0xFF1E293B),
             borderRadius: BorderRadius.circular(12),
           ),
           child: const Icon(
@@ -206,7 +206,7 @@ class DashboardPage extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
+        color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -246,7 +246,7 @@ class DashboardPage extends StatelessWidget {
               child: const Text(
                 '+ Add item',
                 style: TextStyle(
-                  color: Color(0xFF4A90E2),
+                  color: Color(0xFF3B82F6),
                   fontSize: 14,
                   fontWeight: FontWeight.w500,
                 ),
@@ -330,7 +330,7 @@ class DashboardPage extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFF2A2A2A),
+        color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -339,7 +339,7 @@ class DashboardPage extends StatelessWidget {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: const Color(0xFF3A3A3A),
+              color: const Color(0xFF334155),
               borderRadius: BorderRadius.circular(8),
             ),
             child: ClipRRect(
@@ -404,7 +404,7 @@ class DashboardPage extends StatelessWidget {
           Text(
             stock,
             style: const TextStyle(
-              color: Color(0xFF4A90E2),
+              color: Color(0xFF3B82F6),
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),

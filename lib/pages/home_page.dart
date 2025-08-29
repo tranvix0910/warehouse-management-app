@@ -47,6 +47,7 @@ class _HomePageState extends State<HomePage> {
     final isTabletOrDesktop = screenSize.width >= 600;
     
     return Scaffold(
+      backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
         title: Text(
           'Warehouse Management',
@@ -61,7 +62,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
         ),
-        backgroundColor: const Color(0xFF4A90E2),
+        backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
         toolbarHeight: getResponsiveValue(
           context,
@@ -134,6 +135,7 @@ class _HomePageState extends State<HomePage> {
         constraints: const BoxConstraints(maxWidth: 800),
         child: Card(
           elevation: 4,
+          color: const Color(0xFF1E293B),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -195,7 +197,7 @@ class _HomePageState extends State<HomePage> {
         tablet: 120,
         desktop: 150,
       ),
-      color: const Color(0xFF4A90E2),
+      color: const Color(0xFF3B82F6),
     );
   }
 
@@ -211,7 +213,7 @@ class _HomePageState extends State<HomePage> {
           desktop: 32,
         ),
         fontWeight: FontWeight.bold,
-        color: Colors.black87,
+        color: Colors.white,
         height: 1.2,
       ),
       textAlign: TextAlign.center,
@@ -238,7 +240,7 @@ class _HomePageState extends State<HomePage> {
             tablet: 16,
             desktop: 18,
           ),
-          color: Colors.grey[600],
+          color: Colors.grey[400],
           height: 1.4,
         ),
         textAlign: TextAlign.center,
@@ -262,7 +264,7 @@ class _HomePageState extends State<HomePage> {
                 // Navigate to inventory or main features
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4A90E2),
+                backgroundColor: const Color(0xFF3B82F6),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -283,8 +285,8 @@ class _HomePageState extends State<HomePage> {
                 // Show app info or tutorial
               },
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF4A90E2),
-                side: const BorderSide(color: Color(0xFF4A90E2)),
+                foregroundColor: const Color(0xFF3B82F6),
+                side: const BorderSide(color: Color(0xFF3B82F6)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),
@@ -310,7 +312,7 @@ class _HomePageState extends State<HomePage> {
                 // Navigate to inventory or main features
               },
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF4A90E2),
+                backgroundColor: const Color(0xFF3B82F6),
                 foregroundColor: Colors.white,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -331,8 +333,8 @@ class _HomePageState extends State<HomePage> {
                 // Show app info or tutorial
               },
               style: OutlinedButton.styleFrom(
-                foregroundColor: const Color(0xFF4A90E2),
-                side: const BorderSide(color: Color(0xFF4A90E2)),
+                foregroundColor: const Color(0xFF3B82F6),
+                side: const BorderSide(color: Color(0xFF3B82F6)),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(8),
                 ),

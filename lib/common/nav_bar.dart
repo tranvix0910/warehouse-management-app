@@ -15,11 +15,18 @@ class CustomNavBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            Color(0xFF1E293B),
+            Color(0xFF0F172A),
+          ],
+        ),
         boxShadow: [
           BoxShadow(
             blurRadius: 20,
-            color: Colors.black.withValues(alpha: .1),
+            color: Colors.black.withValues(alpha: .3),
           )
         ],
       ),
@@ -27,21 +34,21 @@ class CustomNavBar extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 8),
           child: GNav(
-            rippleColor: Colors.grey[300]!,
-            hoverColor: Colors.grey[100]!,
+            rippleColor: Colors.grey[700]!,
+            hoverColor: Colors.grey[800]!,
             gap: 4,
-            activeColor: Colors.black,
+            activeColor: Colors.white,
             iconSize: 22,
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             duration: const Duration(milliseconds: 400),
-            tabBackgroundColor: Colors.grey[100]!,
-            color: Colors.black,
+            tabBackgroundColor: const Color(0xFF3B82F6).withOpacity(0.2),
+            color: Colors.grey[400]!,
             selectedIndex: selectedIndex,
             onTabChange: onTabChange,
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             tabs: const [
               GButton(
-                icon: Icons.home,
+                icon: Icons.dashboard,
                 text: 'Home',
               ),
               GButton(

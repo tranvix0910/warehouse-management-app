@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import '../common/nav_bar.dart';
 import 'home/dashboard_page.dart';
-import 'items_page.dart';
-import 'transactions_page.dart';
-import 'report_page.dart';
-import 'settings_page.dart';
+import 'home/items_page.dart';
+import 'home/transactions_page.dart';
+import 'home/report_page.dart';
+import 'home/settings_page.dart';
 
 class MainLayout extends StatefulWidget {
   const MainLayout({Key? key}) : super(key: key);
