@@ -42,7 +42,7 @@ class DashboardPage extends StatelessWidget {
           backgroundColor: const Color(0xFF3B82F6),
           child: ClipOval(
             child: Image.asset(
-              'assets/images/avatar.png', // You'll need to add this image
+              'assets/images/sign_in_up_page/1.png', // You'll need to add this image
               width: 50,
               height: 50,
               fit: BoxFit.cover,
@@ -268,7 +268,7 @@ class DashboardPage extends StatelessWidget {
         'stock': '80',
         'min': '1000',
         'max': '1400',
-        'image': 'assets/images/surface.png',
+        'image': 'assets/images/sign_in_up_page/1.png',
       },
       {
         'name': 'Acer Nitro 5',
@@ -276,7 +276,7 @@ class DashboardPage extends StatelessWidget {
         'stock': '75',
         'min': '1200',
         'max': '1500',
-        'image': 'assets/images/acer.png',
+        'image': 'assets/images/sign_in_up_page/1.png',
       },
       {
         'name': 'Hp monoblock 12',
@@ -284,7 +284,7 @@ class DashboardPage extends StatelessWidget {
         'stock': '15',
         'min': '650',
         'max': '800',
-        'image': 'assets/images/hp.png',
+        'image': 'assets/images/sign_in_up_page/1.png',
       },
       {
         'name': 'Apple MacBook Pro 14',
@@ -292,7 +292,7 @@ class DashboardPage extends StatelessWidget {
         'stock': '45',
         'min': '1800',
         'max': '2500',
-        'image': 'assets/images/macbook.png',
+        'image': 'assets/images/sign_in_up_page/1.png',
       },
       {
         'name': 'Lenovo ThinkPad',
@@ -300,7 +300,7 @@ class DashboardPage extends StatelessWidget {
         'stock': '50',
         'min': '950',
         'max': '1200',
-        'image': 'assets/images/lenovo.png',
+        'image': 'assets/images/sign_in_up_page/1.png',
       },
     ];
 
