@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:warehouse_management_app/pages/features/shared/snack_bar.dart';
-import 'package:warehouse_management_app/config/api_constants.dart';
+import '../apis/auth_api.dart';
+import '../utils/snack_bar.dart';
 
 class SignUpPage extends StatefulWidget {
   const SignUpPage({super.key});
@@ -45,30 +43,18 @@ class _SignUpPageState extends State<SignUpPage> {
     setState(() => _isLoading = true);
 
     try {
-      final uri = Uri.parse('${ApiConstants.baseUrl}/auth/register');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({
-          'email': email,
-          'username': username,
-          'password': password,
-        }),
+      final Map<String, dynamic> body = await AuthApi.signUp(
+        email: email,
+        username: username,
+        password: password,
       );
 
-      Map<String, dynamic>? body;
-      try {
-        body = jsonDecode(response.body) as Map<String, dynamic>;
-      } catch (_) {
-        body = null;
-      }
-
-      if (body?['success'] == true) {
+      if (body['success'] == true) {
         showSuccessSnackTop(context, 'Register successful. Please sign in.');
         // Ví dụ: điều hướng sang trang đăng nhập
         Navigator.pushReplacementNamed(context, '/signin');
       } else {
-        showErrorSnackTop(context, body?['message'] ?? 'Register failed');
+        showErrorSnackTop(context, body['message'] ?? 'Register failed');
       }
     } catch (e) {
       showErrorSnackTop(context, 'Network error. Please try again.');
