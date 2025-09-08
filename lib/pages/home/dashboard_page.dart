@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../utils/token_storage.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -16,15 +17,15 @@ class DashboardPage extends StatelessWidget {
               // User Header
               _buildUserHeader(),
               const SizedBox(height: 30),
-              
+
               // Stats Cards
               _buildStatsCards(),
               const SizedBox(height: 30),
-              
+
               // Action Buttons
               _buildActionButtons(),
               const SizedBox(height: 30),
-              
+
               // Items Section
               _buildItemsSection(),
             ],
@@ -35,54 +36,73 @@ class DashboardPage extends StatelessWidget {
   }
 
   Widget _buildUserHeader() {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 25,
-          backgroundColor: const Color(0xFF3B82F6),
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/sign_in_up_page/1.png', // You'll need to add this image
-              width: 50,
-              height: 50,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.person, color: Colors.white, size: 30);
-              },
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: TokenStorage.getUser(),
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+        final String displayName =
+            (user != null && (user['username'] ?? '').toString().isNotEmpty)
+            ? user['username'].toString()
+            : 'Guest';
+        final String? avatarURL = user?['avatar'];
+        return Row(
           children: [
-            Text(
-              'Hello',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 14,
+            CircleAvatar(
+              radius: 25,
+              backgroundColor: const Color(0xFF3B82F6),
+              child: ClipOval(
+                child: avatarURL != null && avatarURL.isNotEmpty
+                    ? Image.network(
+                        avatarURL,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 30,
+                          );
+                        },
+                      )
+                    : Image.asset(
+                        'https://res.cloudinary.com/djmeybzjk/image/upload/v1756449865/pngfind.com-placeholder-png-6104451_awuxxc.png',
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                      ),
               ),
             ),
-            const Text(
-              'Oliver Thompson',
-              style: TextStyle(
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hello',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                ),
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(
+                Icons.notifications_outlined,
                 color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                size: 24,
               ),
             ),
           ],
-        ),
-        const Spacer(),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(
-            Icons.notifications_outlined,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -123,15 +143,9 @@ class DashboardPage extends StatelessWidget {
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(
-                child: _buildStatItem('276', 'Total'),
-              ),
-              Expanded(
-                child: _buildStatItem('374', 'Stock In'),
-              ),
-              Expanded(
-                child: _buildStatItem('98', 'Stock Out'),
-              ),
+              Expanded(child: _buildStatItem('276', 'Total')),
+              Expanded(child: _buildStatItem('374', 'Stock In')),
+              Expanded(child: _buildStatItem('98', 'Stock Out')),
             ],
           ),
         ],
@@ -188,11 +202,7 @@ class DashboardPage extends StatelessWidget {
             color: const Color(0xFF1E293B),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(
-            Icons.open_in_full,
-            color: Colors.white,
-            size: 24,
-          ),
+          child: const Icon(Icons.open_in_full, color: Colors.white, size: 24),
         ),
       ],
     );
@@ -306,14 +316,16 @@ class DashboardPage extends StatelessWidget {
 
     return Column(
       children: items
-          .map((item) => _buildItemCard(
-                name: item['name']!,
-                sku: item['sku']!,
-                stock: item['stock']!,
-                min: item['min']!,
-                max: item['max']!,
-                imagePath: item['image']!,
-              ))
+          .map(
+            (item) => _buildItemCard(
+              name: item['name']!,
+              sku: item['sku']!,
+              stock: item['stock']!,
+              min: item['min']!,
+              max: item['max']!,
+              imagePath: item['image']!,
+            ),
+          )
           .toList(),
     );
   }
@@ -373,28 +385,19 @@ class DashboardPage extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'SKU: $sku',
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     Text(
                       min,
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
                     ),
                     const SizedBox(width: 16),
                     Text(
                       max,
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
                     ),
                   ],
                 ),
