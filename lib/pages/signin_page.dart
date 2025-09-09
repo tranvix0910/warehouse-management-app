@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb, defaultTargetPlatform, TargetPlatform;
-import 'dart:convert';
-import 'package:http/http.dart' as http;
+import '../apis/auth_api.dart';
+import '../utils/snack_bar.dart';
+import '../utils/token_storage.dart';
 
 class SignInPage extends StatefulWidget {
   const SignInPage({super.key});
@@ -29,9 +29,7 @@ class _SignInPageState extends State<SignInPage> {
     final password = _passwordController.text;
 
     if (email.isEmpty || password.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please enter email and password')),
-      );
+      showErrorSnackTop(context, 'Please fill all fields');
       return;
     }
 
@@ -40,39 +38,29 @@ class _SignInPageState extends State<SignInPage> {
     });
 
     try {
-      final isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
-      final baseUrl = isAndroid ? 'http://10.0.2.2:4000' : 'http://localhost:4000';
-      final uri = Uri.parse('$baseUrl/api/v1/auth/login');
-
-      final response = await http.post(
-        uri,
-        headers: const {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'email': email,
-          'password': password,
-        }),
+      final Map<String, dynamic> body = await AuthApi.signIn(
+        email: email,
+        password: password,
       );
 
-      final Map<String, dynamic> body = jsonDecode(response.body) as Map<String, dynamic>;
+      if (body['success'] == true) {
+        final user = body['data'] as Map<String, dynamic>;
+        final accessToken = body['accessToken'];
+        final refreshToken = body['refreshToken'];
 
-      if (response.statusCode == 200 && body['success'] == true) {
+        // Lưu token
+        await TokenStorage.saveTokens(accessToken, refreshToken);
+
+        // Lưu user
+        await TokenStorage.saveUser(user);
+
         if (!mounted) return;
-        // TODO: Optionally persist tokens when _rememberMe is true
         Navigator.pushReplacementNamed(context, '/main');
       } else {
-        final String message = (body['message'] ?? 'Sign in failed').toString();
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
-        );
+        showErrorSnackTop(context, body['message'] ?? 'Login failed');
       }
     } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Network error. Please try again.')),
-      );
+      showErrorSnackTop(context, 'Network error. Please try again.');
     } finally {
       if (mounted) {
         setState(() {
@@ -91,7 +79,10 @@ class _SignInPageState extends State<SignInPage> {
         child: LayoutBuilder(
           builder: (context, constraints) {
             return SingleChildScrollView(
-              padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
+              padding: const EdgeInsets.symmetric(
+                horizontal: 24.0,
+                vertical: 16.0,
+              ),
               child: ConstrainedBox(
                 constraints: BoxConstraints(
                   minHeight: constraints.maxHeight - 32,
@@ -101,7 +92,7 @@ class _SignInPageState extends State<SignInPage> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       SizedBox(height: constraints.maxHeight > 600 ? 16 : 8),
-                      
+
                       // Logo and App Name
                       Column(
                         children: [
@@ -120,7 +111,9 @@ class _SignInPageState extends State<SignInPage> {
                               },
                             ),
                           ),
-                          SizedBox(height: constraints.maxHeight > 600 ? 12 : 8),
+                          SizedBox(
+                            height: constraints.maxHeight > 600 ? 12 : 8,
+                          ),
                           Text(
                             'Nagav Inventory',
                             style: TextStyle(
@@ -132,9 +125,9 @@ class _SignInPageState extends State<SignInPage> {
                           ),
                         ],
                       ),
-                      
+
                       SizedBox(height: constraints.maxHeight > 600 ? 24 : 16),
-                      
+
                       // Tab Buttons
                       Container(
                         padding: const EdgeInsets.all(4),
@@ -151,10 +144,15 @@ class _SignInPageState extends State<SignInPage> {
                             Expanded(
                               child: GestureDetector(
                                 onTap: () {
-                                  Navigator.pushReplacementNamed(context, '/signup');
+                                  Navigator.pushReplacementNamed(
+                                    context,
+                                    '/signup',
+                                  );
                                 },
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(vertical: 18),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 18,
+                                  ),
                                   decoration: BoxDecoration(
                                     color: Colors.transparent,
                                     borderRadius: BorderRadius.circular(12),
@@ -183,13 +181,17 @@ class _SignInPageState extends State<SignInPage> {
                             ),
                             Expanded(
                               child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 18),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 18,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFF4A90E2),
                                   borderRadius: BorderRadius.circular(12),
                                   boxShadow: [
                                     BoxShadow(
-                                      color: const Color(0xFF4A90E2).withOpacity(0.3),
+                                      color: const Color(
+                                        0xFF4A90E2,
+                                      ).withOpacity(0.3),
                                       blurRadius: 8,
                                       offset: const Offset(0, 4),
                                     ),
@@ -219,9 +221,9 @@ class _SignInPageState extends State<SignInPage> {
                           ],
                         ),
                       ),
-                      
+
                       SizedBox(height: constraints.maxHeight > 600 ? 20 : 16),
-                      
+
                       // Email Field
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,10 +248,16 @@ class _SignInPageState extends State<SignInPage> {
                             ),
                             child: TextField(
                               controller: _emailController,
-                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
                               decoration: const InputDecoration(
                                 hintText: 'test@gmail.com',
-                                hintStyle: TextStyle(color: Colors.grey, fontSize: 16),
+                                hintStyle: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 16,
+                                ),
                                 border: InputBorder.none,
                                 contentPadding: EdgeInsets.all(18),
                                 prefixIcon: Icon(
@@ -262,9 +270,9 @@ class _SignInPageState extends State<SignInPage> {
                           ),
                         ],
                       ),
-                      
+
                       SizedBox(height: constraints.maxHeight > 600 ? 16 : 12),
-                      
+
                       // Password Field
                       Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -290,10 +298,16 @@ class _SignInPageState extends State<SignInPage> {
                             child: TextField(
                               controller: _passwordController,
                               obscureText: _obscurePassword,
-                              style: const TextStyle(color: Colors.white, fontSize: 16),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 16,
+                              ),
                               decoration: InputDecoration(
                                 hintText: '••••••••',
-                                hintStyle: const TextStyle(color: Colors.grey, fontSize: 16),
+                                hintStyle: const TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 16,
+                                ),
                                 border: InputBorder.none,
                                 contentPadding: const EdgeInsets.all(18),
                                 prefixIcon: const Icon(
@@ -302,7 +316,9 @@ class _SignInPageState extends State<SignInPage> {
                                 ),
                                 suffixIcon: IconButton(
                                   icon: Icon(
-                                    _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                    _obscurePassword
+                                        ? Icons.visibility_off_outlined
+                                        : Icons.visibility_outlined,
                                     color: Colors.grey,
                                   ),
                                   onPressed: () {
@@ -316,9 +332,9 @@ class _SignInPageState extends State<SignInPage> {
                           ),
                         ],
                       ),
-                      
+
                       SizedBox(height: constraints.maxHeight > 600 ? 16 : 12),
-                      
+
                       // Remember Me Checkbox
                       Row(
                         children: [
@@ -331,65 +347,65 @@ class _SignInPageState extends State<SignInPage> {
                             },
                             activeColor: const Color(0xFF4A90E2),
                             checkColor: Colors.white,
-                            fillColor: WidgetStateProperty.resolveWith<Color>(
-                              (Set<WidgetState> states) {
-                                if (states.contains(WidgetState.selected)) {
-                                  return const Color(0xFF4A90E2);
-                                }
-                                return Colors.transparent;
-                              },
+                            fillColor: WidgetStateProperty.resolveWith<Color>((
+                              Set<WidgetState> states,
+                            ) {
+                              if (states.contains(WidgetState.selected)) {
+                                return const Color(0xFF4A90E2);
+                              }
+                              return Colors.transparent;
+                            }),
+                            side: const BorderSide(
+                              color: Color(0xFF4A90E2),
+                              width: 2,
                             ),
-                            side: const BorderSide(color: Color(0xFF4A90E2), width: 2),
                           ),
                           const Text(
                             'Remember me',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 16,
-                            ),
+                            style: TextStyle(color: Colors.white, fontSize: 16),
                           ),
                         ],
                       ),
-                      
-                      const Expanded(
-                        child: SizedBox(height: 20),
-                      ),
-                      
+
+                      const Expanded(child: SizedBox(height: 20)),
+
                       // Sign In Button
                       SizedBox(
                         width: double.infinity,
                         height: 60,
                         child: ElevatedButton(
                           onPressed: _isLoading ? null : _signIn,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF4A90E2),
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            elevation: 0,
-                            shadowColor: const Color(0xFF4A90E2).withOpacity(0.3),
-                          ).copyWith(
-                            overlayColor: WidgetStateProperty.all(
-                              Colors.white.withOpacity(0.1),
-                            ),
-                          ),
+                          style:
+                              ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF4A90E2),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 0,
+                                shadowColor: const Color(
+                                  0xFF4A90E2,
+                                ).withOpacity(0.3),
+                              ).copyWith(
+                                overlayColor: WidgetStateProperty.all(
+                                  Colors.white.withOpacity(0.1),
+                                ),
+                              ),
                           child: _isLoading
                               ? const SizedBox(
                                   width: 24,
                                   height: 24,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2.5,
-                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
                                   ),
                                 )
                               : const Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(
-                                      Icons.login,
-                                      size: 24,
-                                    ),
+                                    Icon(Icons.login, size: 24),
                                     SizedBox(width: 12),
                                     Text(
                                       'Sign In',
@@ -403,7 +419,7 @@ class _SignInPageState extends State<SignInPage> {
                                 ),
                         ),
                       ),
-                      
+
                       const SizedBox(height: 32),
                     ],
                   ),
