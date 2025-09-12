@@ -57,7 +57,8 @@ class _SignUpPageState extends State<SignUpPage> {
         showErrorSnackTop(context, body['message'] ?? 'Register failed');
       }
     } catch (e) {
-      showErrorSnackTop(context, 'Network error. Please try again.');
+      final message = e.toString().replaceFirst('Exception: ', '');
+      showErrorSnackTop(context, message);
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
