@@ -59,7 +59,7 @@ class ApiClient {
         return true;
       }
     } catch (e) {
-      print("❌ Refresh token failed: $e");
+      print("Refresh token failed: $e");
     }
     return false;
   }
