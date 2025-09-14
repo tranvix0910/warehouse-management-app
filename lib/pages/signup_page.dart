@@ -50,9 +50,16 @@ class _SignUpPageState extends State<SignUpPage> {
       );
 
       if (body['success'] == true) {
-        showSuccessSnackTop(context, 'Register successful. Please sign in.');
-        // Ví dụ: điều hướng sang trang đăng nhập
-        Navigator.pushReplacementNamed(context, '/signin');
+        showSuccessSnackTop(
+          context,
+          'Register successful. Please verify your email.',
+        );
+        // Navigate to OTP verification page
+        Navigator.pushReplacementNamed(
+          context,
+          '/otp',
+          arguments: {'email': email, 'username': username},
+        );
       } else {
         showErrorSnackTop(context, body['message'] ?? 'Register failed');
       }
