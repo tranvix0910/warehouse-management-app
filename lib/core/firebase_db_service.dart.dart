@@ -1,246 +1,191 @@
-import 'package:cloud_firestore/cloud_firestore.dart' as firestore;
+import 'package:flutter/material.dart';
 import 'package:firebase_database/firebase_database.dart';
-import 'package:flutter/foundation.dart';
 
-/// Service class for managing Firebase database operations
-/// Handles temperature, humidity, and stock operations data
-class FirebaseDbService {
-  static final FirebaseDbService _instance = FirebaseDbService._internal();
-  factory FirebaseDbService() => _instance;
-  FirebaseDbService._internal();
+class EnvironmentReading {
+  final double temperatureCelsius;
+  final double humidityPercent;
 
-  // Firestore instance
-  final firestore.FirebaseFirestore _firestore =
-      firestore.FirebaseFirestore.instance;
+  const EnvironmentReading({
+    required this.temperatureCelsius,
+    required this.humidityPercent,
+  });
 
-  // Realtime Database instance
-  final FirebaseDatabase _database = FirebaseDatabase.instance;
-
-  /// Collection references
-  static const String _temperatureCollection = 'temperature_data';
-  static const String _humidityCollection = 'humidity_data';
-  static const String _environmentalDataCollection = 'environmental_data';
-
-  /// Realtime Database references
-  static const String _temperaturePath = 'temperature';
-  static const String _humidityPath = 'humidity';
-  static const String _stockInPath = 'stock_in';
-  static const String _stockOutPath = 'stock_out';
-
-  /// Record temperature data
-  /// [temperature] - Temperature value in Celsius
-  /// [location] - Location where temperature was measured
-  /// [timestamp] - Optional timestamp, defaults to current time
-  Future<bool> recordTemperature({
-    required double temperature,
-    required String location,
-    DateTime? timestamp,
-    Map<String, dynamic>? additionalData,
-  }) async {
-    try {
-      final now = timestamp ?? DateTime.now();
-      final data = {
-        'temperature': temperature,
-        'location': location,
-        'timestamp': firestore.Timestamp.fromDate(now),
-        'created_at': firestore.FieldValue.serverTimestamp(),
-        'additional_data': additionalData ?? {},
-      };
-
-      // Store in Firestore
-      await _firestore.collection(_temperatureCollection).add(data);
-
-      // Store in Realtime Database for real-time updates
-      await _database
-          .ref('$_temperaturePath/${now.millisecondsSinceEpoch}')
-          .set({
-            'temperature': temperature,
-            'location': location,
-            'timestamp': now.toIso8601String(),
-          });
-
-      if (kDebugMode) {
-        print('Temperature recorded successfully: $temperature°C at $location');
-      }
-      return true;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error recording temperature: $e');
-      }
-      return false;
+  factory EnvironmentReading.fromMap(Map<dynamic, dynamic> data) {
+    final temp = data['temperature'];
+    final hum = data['humidity'];
+    double parseNum(dynamic v) {
+      if (v == null) return 0;
+      if (v is num) return v.toDouble();
+      return double.tryParse(v.toString()) ?? 0;
     }
+
+    return EnvironmentReading(
+      temperatureCelsius: parseNum(temp),
+      humidityPercent: parseNum(hum),
+    );
   }
+}
 
-  /// Record humidity data
-  /// [humidity] - Humidity percentage (0-100)
-  /// [location] - Location where humidity was measured
-  /// [timestamp] - Optional timestamp, defaults to current time
-  Future<bool> recordHumidity({
-    required double humidity,
-    required String location,
-    DateTime? timestamp,
-    Map<String, dynamic>? additionalData,
-  }) async {
-    try {
-      final now = timestamp ?? DateTime.now();
-      final data = {
-        'humidity': humidity,
-        'location': location,
-        'timestamp': firestore.Timestamp.fromDate(now),
-        'created_at': firestore.FieldValue.serverTimestamp(),
-        'additional_data': additionalData ?? {},
-      };
+class FirebaseEnvironmentService {
+  final FirebaseDatabase _database;
+  final String path;
 
-      // Store in Firestore
-      await _firestore.collection(_humidityCollection).add(data);
+  FirebaseEnvironmentService({
+    FirebaseDatabase? database,
+    this.path = 'sensors',
+  }) : _database = database ?? FirebaseDatabase.instance;
 
-      // Store in Realtime Database for real-time updates
-      await _database.ref('$_humidityPath/${now.millisecondsSinceEpoch}').set({
-        'humidity': humidity,
-        'location': location,
-        'timestamp': now.toIso8601String(),
-      });
-
-      if (kDebugMode) {
-        print('Humidity recorded successfully: $humidity% at $location');
+  Stream<EnvironmentReading> streamReading() {
+    final ref = _database.ref(path);
+    return ref.onValue.map((event) {
+      final value = event.snapshot.value;
+      if (value is Map) {
+        return EnvironmentReading.fromMap(value as Map<dynamic, dynamic>);
       }
-      return true;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error recording humidity: $e');
-      }
-      return false;
-    }
+      // Support a nested map like { temperature: x, humidity: y }
+      return const EnvironmentReading(
+        temperatureCelsius: 0,
+        humidityPercent: 0,
+      );
+    });
   }
+}
 
-  /// Record environmental data (temperature + humidity) for stock operations
-  /// [temperature] - Temperature value in Celsius
-  /// [humidity] - Humidity percentage (0-100)
-  /// [operationType] - Type of operation ('stock_in' or 'stock_out')
-  /// [itemId] - ID of the item being processed
-  /// [location] - Location where measurement was taken
-  /// [timestamp] - Optional timestamp, defaults to current time
-  Future<bool> recordEnvironmentalDataForStockOperation({
-    required double temperature,
-    required double humidity,
-    required String operationType,
-    required String itemId,
-    required String location,
-    DateTime? timestamp,
-    Map<String, dynamic>? additionalData,
-  }) async {
-    try {
-      final now = timestamp ?? DateTime.now();
-      final environmentalData = {
-        'temperature': temperature,
-        'humidity': humidity,
-        'operation_type': operationType,
-        'item_id': itemId,
-        'location': location,
-        'timestamp': firestore.Timestamp.fromDate(now),
-        'created_at': firestore.FieldValue.serverTimestamp(),
-        'additional_data': additionalData ?? {},
-      };
+class EnvironmentPanel extends StatelessWidget {
+  final FirebaseEnvironmentService service;
+  final EdgeInsetsGeometry padding;
 
-      // Store environmental data in Firestore
-      await _firestore
-          .collection(_environmentalDataCollection)
-          .add(environmentalData);
+  const EnvironmentPanel({
+    super.key,
+    required this.service,
+    this.padding = const EdgeInsets.all(12),
+  });
 
-      // Store in Realtime Database for real-time updates
-      final operationPath = operationType == 'stock_in'
-          ? _stockInPath
-          : _stockOutPath;
-      await _database.ref('$operationPath/${now.millisecondsSinceEpoch}').set({
-        'temperature': temperature,
-        'humidity': humidity,
-        'item_id': itemId,
-        'location': location,
-        'timestamp': now.toIso8601String(),
-      });
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<EnvironmentReading>(
+      stream: service.streamReading(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return _buildContainer(
+            context,
+            child: const Center(
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+          );
+        }
 
-      if (kDebugMode) {
-        print(
-          'Environmental data recorded for $operationType: $temperature°C, $humidity%',
+        if (snapshot.hasError) {
+          return _buildContainer(
+            context,
+            child: const Center(
+              child: Text(
+                'Không thể tải dữ liệu môi trường',
+                style: TextStyle(color: Colors.white70),
+              ),
+            ),
+          );
+        }
+
+        final reading =
+            snapshot.data ??
+            const EnvironmentReading(temperatureCelsius: 0, humidityPercent: 0);
+        return _buildContainer(
+          context,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _metricTile(
+                context,
+                icon: Icons.thermostat,
+                label: 'Nhiệt độ',
+                value: '${reading.temperatureCelsius.toStringAsFixed(1)}°C',
+                color: const Color(0xFFFF6B6B),
+              ),
+              _divider(),
+              _metricTile(
+                context,
+                icon: Icons.water_drop,
+                label: 'Độ ẩm',
+                value: '${reading.humidityPercent.toStringAsFixed(0)}%',
+                color: const Color(0xFF3B82F6),
+              ),
+            ],
+          ),
         );
-      }
-      return true;
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error recording environmental data: $e');
-      }
-      return false;
-    }
+      },
+    );
   }
 
-  /// Get environmental data for stock operations
-  /// [operationType] - Filter by operation type ('stock_in' or 'stock_out')
-  /// [limit] - Maximum number of records to retrieve
-  /// [startAfter] - Document to start after for pagination
-  Future<List<Map<String, dynamic>>> getEnvironmentalDataForStockOperations({
-    String? operationType,
-    int limit = 50,
-    firestore.DocumentSnapshot? startAfter,
-  }) async {
-    try {
-      firestore.Query query = _firestore
-          .collection(_environmentalDataCollection)
-          .orderBy('timestamp', descending: true)
-          .limit(limit);
-
-      if (operationType != null) {
-        query = query.where('operation_type', isEqualTo: operationType);
-      }
-
-      if (startAfter != null) {
-        query = query.startAfterDocument(startAfter);
-      }
-
-      final snapshot = await query.get();
-      return snapshot.docs.map((doc) {
-        final data = doc.data() as Map<String, dynamic>;
-        data['id'] = doc.id;
-        return data;
-      }).toList();
-    } catch (e) {
-      if (kDebugMode) {
-        print('Error getting environmental data: $e');
-      }
-      return [];
-    }
+  Widget _buildContainer(BuildContext context, {required Widget child}) {
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFF334155), width: 1),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
   }
 
-  /// Listen to real-time temperature updates
-  Stream<Map<String, dynamic>?> listenToTemperatureUpdates() {
-    return _database.ref(_temperaturePath).onValue.map((event) {
-      if (event.snapshot.value != null) {
-        return Map<String, dynamic>.from(event.snapshot.value as Map);
-      }
-      return null;
-    });
+  Widget _metricTile(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Expanded(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: color.withOpacity(0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: Colors.white70, fontSize: 12),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 
-  /// Listen to real-time humidity updates
-  Stream<Map<String, dynamic>?> listenToHumidityUpdates() {
-    return _database.ref(_humidityPath).onValue.map((event) {
-      if (event.snapshot.value != null) {
-        return Map<String, dynamic>.from(event.snapshot.value as Map);
-      }
-      return null;
-    });
-  }
-
-  /// Listen to real-time stock operation updates
-  /// [operationType] - Type of operation to listen to ('stock_in' or 'stock_out')
-  Stream<Map<String, dynamic>?> listenToStockOperationUpdates(
-    String operationType,
-  ) {
-    final path = operationType == 'stock_in' ? _stockInPath : _stockOutPath;
-    return _database.ref(path).onValue.map((event) {
-      if (event.snapshot.value != null) {
-        return Map<String, dynamic>.from(event.snapshot.value as Map);
-      }
-      return null;
-    });
+  Widget _divider() {
+    return Container(
+      width: 1,
+      height: 48,
+      margin: const EdgeInsets.symmetric(horizontal: 12),
+      color: const Color(0xFF334155),
+    );
   }
 }

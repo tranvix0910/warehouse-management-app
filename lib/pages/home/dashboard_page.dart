@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/firebase_db_service.dart.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -16,15 +17,19 @@ class DashboardPage extends StatelessWidget {
               // User Header
               _buildUserHeader(),
               const SizedBox(height: 30),
-              
+
               // Stats Cards
               _buildStatsCards(),
               const SizedBox(height: 30),
-              
+
+              // Environment Panel (Temperature & Humidity)
+              EnvironmentPanel(service: FirebaseEnvironmentService()),
+              const SizedBox(height: 20),
+
               // Action Buttons
               _buildActionButtons(),
               const SizedBox(height: 30),
-              
+
               // Items Section
               _buildItemsSection(),
             ],
@@ -58,10 +63,7 @@ class DashboardPage extends StatelessWidget {
           children: [
             Text(
               'Hello',
-              style: TextStyle(
-                color: Colors.grey[400],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[400], fontSize: 14),
             ),
             const Text(
               'Oliver Thompson',
@@ -123,15 +125,9 @@ class DashboardPage extends StatelessWidget {
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(
-                child: _buildStatItem('276', 'Total'),
-              ),
-              Expanded(
-                child: _buildStatItem('374', 'Stock In'),
-              ),
-              Expanded(
-                child: _buildStatItem('98', 'Stock Out'),
-              ),
+              Expanded(child: _buildStatItem('276', 'Total')),
+              Expanded(child: _buildStatItem('374', 'Stock In')),
+              Expanded(child: _buildStatItem('98', 'Stock Out')),
             ],
           ),
         ],
@@ -188,11 +184,7 @@ class DashboardPage extends StatelessWidget {
             color: const Color(0xFF1E293B),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: const Icon(
-            Icons.open_in_full,
-            color: Colors.white,
-            size: 24,
-          ),
+          child: const Icon(Icons.open_in_full, color: Colors.white, size: 24),
         ),
       ],
     );
@@ -306,14 +298,16 @@ class DashboardPage extends StatelessWidget {
 
     return Column(
       children: items
-          .map((item) => _buildItemCard(
-                name: item['name']!,
-                sku: item['sku']!,
-                stock: item['stock']!,
-                min: item['min']!,
-                max: item['max']!,
-                imagePath: item['image']!,
-              ))
+          .map(
+            (item) => _buildItemCard(
+              name: item['name']!,
+              sku: item['sku']!,
+              stock: item['stock']!,
+              min: item['min']!,
+              max: item['max']!,
+              imagePath: item['image']!,
+            ),
+          )
           .toList(),
     );
   }
@@ -373,28 +367,19 @@ class DashboardPage extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   'SKU: $sku',
-                  style: TextStyle(
-                    color: Colors.grey[500],
-                    fontSize: 12,
-                  ),
+                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
                 ),
                 const SizedBox(height: 4),
                 Row(
                   children: [
                     Text(
                       min,
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
                     ),
                     const SizedBox(width: 16),
                     Text(
                       max,
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 12,
-                      ),
+                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
                     ),
                   ],
                 ),
