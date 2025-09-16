@@ -42,7 +42,7 @@ class _OtpPageState extends State<OtpPage> {
 
   void _startCountdown() {
     setState(() {
-      _countdown = 60; // 60 seconds countdown
+      _countdown = 300; // 5 minutes countdown (300 seconds)
     });
 
     Future.doWhile(() async {
@@ -72,6 +72,12 @@ class _OtpPageState extends State<OtpPage> {
 
   String _getOtpCode() {
     return _otpControllers.map((controller) => controller.text).join();
+  }
+
+  String _formatCountdown(int seconds) {
+    final minutes = seconds ~/ 60;
+    final remainingSeconds = seconds % 60;
+    return '${minutes.toString().padLeft(1, '0')}:${remainingSeconds.toString().padLeft(2, '0')}';
   }
 
   Future<void> _verifyOtp() async {
@@ -227,7 +233,7 @@ class _OtpPageState extends State<OtpPage> {
                       Padding(
                         padding: const EdgeInsets.symmetric(horizontal: 16),
                         child: Text(
-                          'We\'ve sent a 6-digit verification code to\n${widget.email}',
+                          'We\'ve sent a 6-digit verification code to\n${widget.email}\n\nThis code will expire in 5 minutes.',
                           textAlign: TextAlign.center,
                           style: TextStyle(
                             color: Colors.grey[400],
@@ -380,7 +386,7 @@ class _OtpPageState extends State<OtpPage> {
                                   )
                                 : Text(
                                     _countdown > 0
-                                        ? 'Resend in ${_countdown}s'
+                                        ? 'Resend in ${_formatCountdown(_countdown)}'
                                         : 'Resend OTP',
                                     style: TextStyle(
                                       color: _countdown > 0
