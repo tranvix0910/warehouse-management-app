@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "394490348413",
+    "firebase_url": "https://mobile-app-development-1a585-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "mobile-app-development-1a585",
+    "storage_bucket": "mobile-app-development-1a585.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:394490348413:android:c800a3f8e4f173c02d4214",
+        "android_client_info": {
+          "package_name": "com.example.warehouse_management_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBRjYQzMJD_pP3sUPFsd8Jxlvs2mdQkaB4"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
