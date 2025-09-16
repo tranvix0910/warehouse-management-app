@@ -4,13 +4,16 @@ import 'package:device_preview/device_preview.dart';
 import 'pages/home_page.dart';
 import 'pages/signin_page.dart';
 import 'pages/signup_page.dart';
+import 'pages/otp_page.dart';
 import 'pages/main_layout.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'apis/api_client.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+   ApiClient.init();
   runApp(DevicePreview(builder: (context) => const MyApp()));
 }
 
@@ -32,6 +35,12 @@ class MyApp extends StatelessWidget {
         '/main': (context) => const MainLayout(),
         '/signin': (context) => const SignInPage(),
         '/signup': (context) => const SignUpPage(),
+        '/otp': (context) {
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>;
+          return OtpPage(email: args['email'], username: args['username']);
+        }
       },
     );
   }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../core/firebase_db_service.dart.dart';
+import '../../utils/token_storage.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({Key? key}) : super(key: key);
@@ -40,51 +41,76 @@ class DashboardPage extends StatelessWidget {
   }
 
   Widget _buildUserHeader() {
-    return Row(
-      children: [
-        CircleAvatar(
-          radius: 25,
-          backgroundColor: const Color(0xFF3B82F6),
-          child: ClipOval(
-            child: Image.asset(
-              'assets/images/avatar.png', // You'll need to add this image
-              width: 50,
-              height: 50,
-              fit: BoxFit.cover,
-              errorBuilder: (context, error, stackTrace) {
-                return const Icon(Icons.person, color: Colors.white, size: 30);
-              },
-            ),
-          ),
-        ),
-        const SizedBox(width: 12),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+    return FutureBuilder<Map<String, dynamic>?>(
+      future: TokenStorage.getUser(),
+      builder: (context, snapshot) {
+        final user = snapshot.data;
+        final String displayName =
+            (user != null && (user['username'] ?? '').toString().isNotEmpty)
+            ? user['username'].toString()
+            : 'Guest';
+        final String? avatarURL = user?['avatar'];
+        return Row(
           children: [
             Text(
               'Hello',
               style: TextStyle(color: Colors.grey[400], fontSize: 14),
+            CircleAvatar(
+              radius: 25,
+              backgroundColor: const Color(0xFF3B82F6),
+              child: ClipOval(
+                child: avatarURL != null && avatarURL.isNotEmpty
+                    ? Image.network(
+                        avatarURL,
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 30,
+                          );
+                        },
+                      )
+                    : Image.asset(
+                        'https://res.cloudinary.com/djmeybzjk/image/upload/v1756449865/pngfind.com-placeholder-png-6104451_awuxxc.png',
+                        width: 50,
+                        height: 50,
+                        fit: BoxFit.cover,
+                      ),
+              ),
             ),
-            const Text(
-              'Oliver Thompson',
-              style: TextStyle(
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Hello',
+                  style: TextStyle(color: Colors.grey[400], fontSize: 14),
+                ),
+                Text(
+                  displayName,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const Spacer(),
+            IconButton(
+              onPressed: () {},
+              icon: const Icon(
+                Icons.notifications_outlined,
                 color: Colors.white,
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                size: 24,
               ),
             ),
           ],
-        ),
-        const Spacer(),
-        IconButton(
-          onPressed: () {},
-          icon: const Icon(
-            Icons.notifications_outlined,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-      ],
+        );
+      },
     );
   }
 
@@ -260,7 +286,7 @@ class DashboardPage extends StatelessWidget {
         'stock': '80',
         'min': '1000',
         'max': '1400',
-        'image': 'assets/images/surface.png',
+        'image': 'assets/images/sign_in_up_page/1.png',
       },
       {
         'name': 'Acer Nitro 5',
@@ -268,7 +294,7 @@ class DashboardPage extends StatelessWidget {
         'stock': '75',
         'min': '1200',
         'max': '1500',
-        'image': 'assets/images/acer.png',
+        'image': 'assets/images/sign_in_up_page/1.png',
       },
       {
         'name': 'Hp monoblock 12',
@@ -276,7 +302,7 @@ class DashboardPage extends StatelessWidget {
         'stock': '15',
         'min': '650',
         'max': '800',
-        'image': 'assets/images/hp.png',
+        'image': 'assets/images/sign_in_up_page/1.png',
       },
       {
         'name': 'Apple MacBook Pro 14',
@@ -284,7 +310,7 @@ class DashboardPage extends StatelessWidget {
         'stock': '45',
         'min': '1800',
         'max': '2500',
-        'image': 'assets/images/macbook.png',
+        'image': 'assets/images/sign_in_up_page/1.png',
       },
       {
         'name': 'Lenovo ThinkPad',
@@ -292,7 +318,7 @@ class DashboardPage extends StatelessWidget {
         'stock': '50',
         'min': '950',
         'max': '1200',
-        'image': 'assets/images/lenovo.png',
+        'image': 'assets/images/sign_in_up_page/1.png',
       },
     ];
 
