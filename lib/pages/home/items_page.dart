@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../items/details_page.dart';
 import '../items/add_item_page.dart';
-import '../../apis/get_all_product_api.dart';
+import '../../apis/product_api.dart';
 
 class ItemModel {
   final String id;

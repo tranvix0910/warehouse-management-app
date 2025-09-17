@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:top_snackbar_flutter/top_snack_bar.dart';
 import 'package:top_snackbar_flutter/custom_snack_bar.dart';
 
-/// Hiển thị snackbar success ở top
 void showSuccessSnackTop(BuildContext context, String message) {
   final overlay = Overlay.of(context);
   if (overlay == null) return;
@@ -11,11 +10,10 @@ void showSuccessSnackTop(BuildContext context, String message) {
   showTopSnackBar(
     overlay,
     CustomSnackBar.success(message: message),
-    displayDuration: const Duration(milliseconds: 1500), // thời gian hiển thị
+    displayDuration: const Duration(milliseconds: 1500),
   );
 }
 
-/// Hiển thị snackbar error ở top
 void showErrorSnackTop(BuildContext context, String message) {
   final overlay = Overlay.of(context);
   if (overlay == null) return;
@@ -27,7 +25,6 @@ void showErrorSnackTop(BuildContext context, String message) {
   );
 }
 
-/// Hiển thị snackbar info ở top
 void showInfoSnackTop(BuildContext context, String message) {
   final overlay = Overlay.of(context);
   if (overlay == null) return;
