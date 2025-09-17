@@ -78,7 +78,7 @@ class AuthApi {
       throw Exception('Network error: ${e.message}');
     }
   }
-
+  
   static Future<Map<String, dynamic>> resendOtp({required String email}) async {
     try {
       final response = await ApiClient.dio.post(

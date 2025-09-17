@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../../core/firebase_db_service.dart.dart';
 import '../../utils/token_storage.dart';
 import '../../apis/get_all_product_api.dart';
 import '../items/add_item_page.dart';
@@ -115,6 +116,10 @@ class _DashboardPageState extends State<DashboardPage> {
               // Stats Cards
               _buildStatsCards(),
               const SizedBox(height: 30),
+
+              // Environment Panel (Temperature & Humidity)
+              EnvironmentPanel(service: FirebaseEnvironmentService()),
+              const SizedBox(height: 20),
 
               // Action Buttons
               _buildActionButtons(),
