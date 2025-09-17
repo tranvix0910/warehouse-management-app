@@ -7,7 +7,7 @@ import 'home/report_page.dart';
 import 'home/settings_page.dart';
 
 class MainLayout extends StatefulWidget {
-  const MainLayout({Key? key}) : super(key: key);
+  const MainLayout({super.key});
 
   @override
   State<MainLayout> createState() => _MainLayoutState();
