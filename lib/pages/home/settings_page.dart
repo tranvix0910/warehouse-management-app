@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 class SettingsPage extends StatefulWidget {
-  const SettingsPage({Key? key}) : super(key: key);
+  const SettingsPage({super.key});
 
   @override
   State<SettingsPage> createState() => _SettingsPageState();
@@ -248,7 +248,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         isPushNotificationEnabled = value;
                       });
                     },
-                    activeColor: const Color(0xFF3B82F6),
+                    activeThumbColor: const Color(0xFF3B82F6),
                   ),
                 ],
               ),
