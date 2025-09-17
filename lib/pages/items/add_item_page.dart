@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 import '../../apis/add_product_api.dart';
 
 class AddItemPage extends StatefulWidget {
@@ -22,6 +25,10 @@ class _AddItemPageState extends State<AddItemPage> {
   String? _selectedProcessor;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
+  
+  // Image picker variables
+  XFile? _selectedImage;
+  final ImagePicker _picker = ImagePicker();
 
   @override
   void dispose() {
@@ -162,24 +169,73 @@ class _AddItemPageState extends State<AddItemPage> {
                 style: BorderStyle.solid,
               ),
             ),
-            child: const Icon(
-              Icons.inventory_2_outlined,
-              size: 48,
-              color: Color(0xFF64748B),
-            ),
+            child: _selectedImage != null
+                ? ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: kIsWeb
+                        ? Image.network(
+                            _selectedImage!.path,
+                            width: 116,
+                            height: 116,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.error,
+                                size: 48,
+                                color: Color(0xFFEF4444),
+                              );
+                            },
+                          )
+                        : Image.file(
+                            File(_selectedImage!.path),
+                            width: 116,
+                            height: 116,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) {
+                              return const Icon(
+                                Icons.error,
+                                size: 48,
+                                color: Color(0xFFEF4444),
+                              );
+                            },
+                          ),
+                  )
+                : const Icon(
+                    Icons.inventory_2_outlined,
+                    size: 48,
+                    color: Color(0xFF64748B),
+                  ),
           ),
           const SizedBox(height: 12),
           TextButton(
             onPressed: _pickImage,
-            child: const Text(
-              'Add image',
-              style: TextStyle(
+            child: Text(
+              _selectedImage != null ? 'Change image' : 'Add image',
+              style: const TextStyle(
                 color: Color(0xFF3B82F6),
                 fontSize: 16,
                 fontWeight: FontWeight.w500,
               ),
             ),
           ),
+          if (_selectedImage != null) ...[
+            const SizedBox(height: 8),
+            TextButton(
+              onPressed: () {
+                setState(() {
+                  _selectedImage = null;
+                });
+              },
+              child: const Text(
+                'Remove image',
+                style: TextStyle(
+                  color: Color(0xFFEF4444),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -427,35 +483,173 @@ class _AddItemPageState extends State<AddItemPage> {
   }
 
   void _pickImage() {
-    // Implement image picker functionality
+    if (kIsWeb) {
+      // Web: Show file picker
+      _pickImageWeb();
+    } else {
+      // Mobile: Show camera/gallery options
+      _pickImageMobile();
+    }
+  }
+
+  void _pickImageWeb() async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _selectedImage = image;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Image selected successfully!'),
+            backgroundColor: Color(0xFF50C878),
+            duration: Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to pick image: $e');
+    }
+  }
+
+  void _pickImageMobile() {
     showModalBottomSheet(
       context: context,
       backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
       builder: (context) => Container(
         padding: const EdgeInsets.all(20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text(
+              'Select Image',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            
+            // Camera option
             ListTile(
-              leading: const Icon(Icons.camera_alt, color: Colors.white),
-              title: const Text('Camera', style: TextStyle(color: Colors.white)),
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF3B82F6).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.camera_alt,
+                  color: Color(0xFF3B82F6),
+                  size: 20,
+                ),
+              ),
+              title: const Text(
+                'Camera',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: const Text(
+                'Take a photo',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                ),
+              ),
               onTap: () {
                 Navigator.pop(context);
-                // Implement camera functionality
+                _pickImageFromSource(ImageSource.camera);
               },
             ),
+            
+            const SizedBox(height: 16),
+            
+            // Gallery option
             ListTile(
-              leading: const Icon(Icons.photo_library, color: Colors.white),
-              title: const Text('Gallery', style: TextStyle(color: Colors.white)),
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.photo_library,
+                  color: Color(0xFF10B981),
+                  size: 20,
+                ),
+              ),
+              title: const Text(
+                'Gallery',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: const Text(
+                'Choose from gallery',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                ),
+              ),
               onTap: () {
                 Navigator.pop(context);
-                // Implement gallery functionality
+                _pickImageFromSource(ImageSource.gallery);
               },
             ),
+            
+            const SizedBox(height: 20),
           ],
         ),
       ),
     );
+  }
+
+  void _pickImageFromSource(ImageSource source) async {
+    try {
+      final XFile? image = await _picker.pickImage(
+        source: source,
+        maxWidth: 1920,
+        maxHeight: 1080,
+        imageQuality: 85,
+      );
+      
+      if (image != null) {
+        setState(() {
+          _selectedImage = image;
+        });
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Image ${source == ImageSource.camera ? 'captured' : 'selected'} successfully!'),
+            backgroundColor: const Color(0xFF50C878),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      _showErrorSnackBar('Failed to ${source == ImageSource.camera ? 'capture' : 'select'} image: $e');
+    }
   }
 
   void _showSKUInputMethodDialog() {
@@ -955,7 +1149,7 @@ class _AddItemPageState extends State<AddItemPage> {
         color: _selectedColor!,
         processor: _selectedProcessor!,
         barcode: _rfidUUID, // Using RFID UUID as barcode for now
-        image: null, // TODO: Implement image upload later
+        xFileImage: _selectedImage, // Pass XFile for both web and mobile
       );
 
       // Show success message
