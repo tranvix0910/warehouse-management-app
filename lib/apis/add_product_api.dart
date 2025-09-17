@@ -1,8 +1,8 @@
-import 'dart:convert';
 import 'dart:io';
-import 'package:http/http.dart' as http;
-import '../config/api_constants.dart';
-import '../utils/token_storage.dart';
+import 'package:flutter/foundation.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:dio/dio.dart';
+import 'api_client.dart';
 
 class AddProductApi {
   static Future<Map<String, dynamic>> addProduct({
@@ -19,95 +19,92 @@ class AddProductApi {
     required String processor,
     String? barcode,
     File? image,
+    XFile? xFileImage,
   }) async {
-    final accessToken = await TokenStorage.getAccessToken();
-    
-    if (accessToken == null) {
-      throw Exception('No access token found. Please login again.');
-    }
-
-    final uri = Uri.parse('${ApiConstants.baseUrl}/products/create');
-    
-    // Create multipart request
-    var request = http.MultipartRequest('POST', uri);
-    
-    // Add headers
-    request.headers.addAll({
-      'accept': 'application/json',
-      'Authorization': 'Bearer $accessToken',
-    });
-    
-    // Add form fields
-    request.fields.addAll({
-      'productName': productName,
-      'SKU': sku,
-      'category': category,
-      'cost': cost,
-      'price': price,
-      'quantity': quantity,
-      'RAM': ram,
-      'date': date,
-      'GPU': gpu,
-      'color': color,
-      'processor': processor,
-    });
-    
-    // Add barcode if provided
-    if (barcode != null && barcode.isNotEmpty) {
-      request.fields['barcode'] = barcode;
-    }
-    
-    // Add image if provided
-    if (image != null) {
-      request.files.add(
-        await http.MultipartFile.fromPath('image', image.path),
-      );
-    } else {
-      // Add empty image field as shown in the curl command
-      request.fields['image'] = '';
-    }
-
     try {
-      // Send the request
-      final streamedResponse = await request.send();
-      final response = await http.Response.fromStream(streamedResponse);
-      
-      final Map<String, dynamic> body = _safeDecode(response.body);
-      
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (body['success'] == true) {
-          return body;
+      // Create form data
+      final formData = FormData.fromMap({
+        'productName': productName,
+        'SKU': sku,
+        'category': category,
+        'cost': cost,
+        'price': price,
+        'quantity': quantity,
+        'RAM': ram,
+        'date': date,
+        'GPU': gpu,
+        'color': color,
+        'processor': processor,
+      });
+
+      // Add barcode if provided
+      if (barcode != null && barcode.isNotEmpty) {
+        formData.fields.add(MapEntry('barcode', barcode));
+      }
+
+      // Add image if provided
+      if (image != null) {
+        formData.files.add(MapEntry(
+          'image',
+          await MultipartFile.fromFile(image.path),
+        ));
+      } else if (xFileImage != null) {
+        // Handle XFile for web and mobile
+        if (kIsWeb) {
+          final bytes = await xFileImage.readAsBytes();
+          formData.files.add(MapEntry(
+            'image',
+            MultipartFile.fromBytes(bytes, filename: xFileImage.name),
+          ));
+        } else {
+          formData.files.add(MapEntry(
+            'image',
+            await MultipartFile.fromFile(xFileImage.path),
+          ));
         }
       }
-      
-      // Handle different error cases
-      if (response.statusCode == 401) {
-        throw Exception('Unauthorized. Please login again.');
-      } else if (response.statusCode == 403) {
-        throw Exception('Access forbidden. Insufficient permissions.');
-      } else if (response.statusCode == 400) {
-        throw Exception(body['message'] ?? 'Invalid product data provided.');
-      } else if (response.statusCode == 409) {
-        throw Exception('Product with this SKU already exists.');
-      } else if (response.statusCode >= 500) {
-        throw Exception('Server error. Please try again later.');
+
+      // Send the request
+      final response = await ApiClient.dio.post(
+        '/products/create',
+        data: formData,
+        options: Options(
+          headers: {
+            'accept': 'application/json',
+          },
+        ),
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
       }
+      throw Exception(response.data['message'] ?? 'Failed to create product');
       
-      throw Exception(body['message'] ?? 'Failed to create product (${response.statusCode})');
-      
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final statusCode = e.response!.statusCode;
+        final errorData = e.response!.data;
+        
+        if (statusCode == 401) {
+          throw Exception('Unauthorized. Please login again.');
+        } else if (statusCode == 403) {
+          throw Exception('Access forbidden. Insufficient permissions.');
+        } else if (statusCode == 400) {
+          throw Exception(errorData['message'] ?? 'Invalid product data provided.');
+        } else if (statusCode == 409) {
+          throw Exception('Product with this SKU already exists.');
+        } else if (statusCode! >= 500) {
+          throw Exception('Server error. Please try again later.');
+        }
+        
+        throw Exception(errorData['message'] ?? 'Failed to create product ($statusCode)');
+      }
+      throw Exception('Network error: ${e.message}');
     } catch (e) {
       if (e is Exception) {
         rethrow;
       }
       throw Exception('Network error: ${e.toString()}');
-    }
-  }
-
-  static Map<String, dynamic> _safeDecode(String source) {
-    try {
-      return jsonDecode(source) as Map<String, dynamic>;
-    } catch (_) {
-      return <String, dynamic>{};
     }
   }
 }

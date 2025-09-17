@@ -1,24 +1,29 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/api_constants.dart';
+import 'package:dio/dio.dart';
+import 'api_client.dart';
 
 class AuthApi {
   static Future<Map<String, dynamic>> signIn({
     required String email,
     required String password,
   }) async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}/auth/login');
-    final res = await http.post(
-      uri,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'password': password}),
-    );
+    try {
+      final response = await ApiClient.dio.post(
+        '/auth/login',
+        data: {'email': email, 'password': password},
+        options: Options(headers: {'Authorization': null}), // No auth needed for login
+      );
 
-    final Map<String, dynamic> body = _safeDecode(res.body);
-    if (res.statusCode == 200 && body['success'] == true) {
-      return body;
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(response.data['message'] ?? 'Login failed');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final errorData = e.response!.data;
+        throw Exception(errorData['message'] ?? 'Login failed (${e.response!.statusCode})');
+      }
+      throw Exception('Network error: ${e.message}');
     }
-    throw Exception(body['message'] ?? 'Login failed (${res.statusCode})');
   }
 
   static Future<Map<String, dynamic>> signUp({
@@ -26,64 +31,72 @@ class AuthApi {
     required String username,
     required String password,
   }) async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}/auth/register');
-    final res = await http.post(
-      uri,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'email': email,
-        'username': username,
-        'password': password,
-      }),
-    );
+    try {
+      final response = await ApiClient.dio.post(
+        '/auth/register',
+        data: {
+          'email': email,
+          'username': username,
+          'password': password,
+        },
+        options: Options(headers: {'Authorization': null}), // No auth needed for register
+      );
 
-    final Map<String, dynamic> body = _safeDecode(res.body);
-    if (res.statusCode == 200 && body['success'] == true) {
-      return body;
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(response.data['message'] ?? 'Register failed');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final errorData = e.response!.data;
+        throw Exception(errorData['message'] ?? 'Register failed (${e.response!.statusCode})');
+      }
+      throw Exception('Network error: ${e.message}');
     }
-    throw Exception(body['message'] ?? 'Register failed (${res.statusCode})');
   }
 
   static Future<Map<String, dynamic>> verifyOtp({
     required String email,
     required String otp,
   }) async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}/auth/verify-otp');
-    final res = await http.post(
-      uri,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email, 'otp': otp}),
-    );
-
-    final Map<String, dynamic> body = _safeDecode(res.body);
-    if (res.statusCode == 200 && body['success'] == true) {
-      return body;
-    }
-    throw Exception(
-      body['message'] ?? 'OTP verification failed (${res.statusCode})',
-    );
-  }
-
-  static Future<Map<String, dynamic>> resendOtp({required String email}) async {
-    final uri = Uri.parse('${ApiConstants.baseUrl}/auth/resend-otp');
-    final res = await http.post(
-      uri,
-      headers: const {'Content-Type': 'application/json'},
-      body: jsonEncode({'email': email}),
-    );
-
-    final Map<String, dynamic> body = _safeDecode(res.body);
-    if (res.statusCode == 200 && body['success'] == true) {
-      return body;
-    }
-    throw Exception(body['message'] ?? 'Resend OTP failed (${res.statusCode})');
-  }
-
-  static Map<String, dynamic> _safeDecode(String source) {
     try {
-      return jsonDecode(source) as Map<String, dynamic>;
-    } catch (_) {
-      return <String, dynamic>{};
+      final response = await ApiClient.dio.post(
+        '/auth/verify-otp',
+        data: {'email': email, 'otp': otp},
+        options: Options(headers: {'Authorization': null}), // No auth needed for OTP
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(response.data['message'] ?? 'OTP verification failed');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final errorData = e.response!.data;
+        throw Exception(errorData['message'] ?? 'OTP verification failed (${e.response!.statusCode})');
+      }
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+  
+  static Future<Map<String, dynamic>> resendOtp({required String email}) async {
+    try {
+      final response = await ApiClient.dio.post(
+        '/auth/resend-otp',
+        data: {'email': email},
+        options: Options(headers: {'Authorization': null}), // No auth needed for resend OTP
+      );
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(response.data['message'] ?? 'Resend OTP failed');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final errorData = e.response!.data;
+        throw Exception(errorData['message'] ?? 'Resend OTP failed (${e.response!.statusCode})');
+      }
+      throw Exception('Network error: ${e.message}');
     }
   }
 }

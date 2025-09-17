@@ -1,9 +1,103 @@
 import 'package:flutter/material.dart';
 import '../../core/firebase_db_service.dart.dart';
 import '../../utils/token_storage.dart';
+import '../../apis/get_all_product_api.dart';
+import '../items/add_item_page.dart';
+import '../items/details_page.dart';
 
-class DashboardPage extends StatelessWidget {
-  const DashboardPage({super.key});
+class ItemModel {
+  final String id;
+  final String name;
+  final String sku;
+  final String cost;
+  final String price;
+  final int stock;
+  final String image;
+  final String category;
+  final String ram;
+  final String date;
+  final String gpu;
+  final String color;
+  final String processor;
+
+  ItemModel({
+    required this.id,
+    required this.name,
+    required this.sku,
+    required this.cost,
+    required this.price,
+    required this.stock,
+    required this.image,
+    required this.category,
+    required this.ram,
+    required this.date,
+    required this.gpu,
+    required this.color,
+    required this.processor,
+  });
+
+  factory ItemModel.fromJson(Map<String, dynamic> json) {
+    return ItemModel(
+      id: json['_id'] ?? '',
+      name: json['productName'] ?? '',
+      sku: json['SKU'] ?? '',
+      cost: '${json['cost']} USD',
+      price: '${json['price']} USD',
+      stock: json['quantity'] ?? 0,
+      image: json['image'] ?? '',
+      category: json['category'] ?? '',
+      ram: json['RAM'] ?? '',
+      date: json['date'] ?? '',
+      gpu: json['GPU'] ?? '',
+      color: json['color'] ?? '',
+      processor: json['processor'] ?? '',
+    );
+  }
+}
+
+class DashboardPage extends StatefulWidget {
+  const DashboardPage({Key? key}) : super(key: key);
+
+  @override
+  State<DashboardPage> createState() => _DashboardPageState();
+}
+
+class _DashboardPageState extends State<DashboardPage> {
+  List<ItemModel> items = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final response = await GetAllProductsApi.getAllProducts();
+      final List<dynamic> productsData = response['data'] ?? [];
+      
+      setState(() {
+        // Chỉ lấy 5 sản phẩm đầu tiên
+        items = productsData
+            .take(5)
+            .map((json) => ItemModel.fromJson(json))
+            .toList();
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,9 +146,6 @@ class DashboardPage extends StatelessWidget {
         final String? avatarURL = user?['avatar'];
         return Row(
           children: [
-            Text(
-              'Hello',
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
             CircleAvatar(
               radius: 25,
               backgroundColor: const Color(0xFF3B82F6),
@@ -260,7 +351,20 @@ class DashboardPage extends StatelessWidget {
               ),
             ),
             TextButton(
-              onPressed: () {},
+              onPressed: () async {
+                // Chuyển trực tiếp đến trang Add Item
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddItemPage(),
+                  ),
+                );
+                
+                // Nếu có sản phẩm được thêm, refresh danh sách
+                if (result == true) {
+                  _loadProducts();
+                }
+              },
               child: const Text(
                 '+ Add item',
                 style: TextStyle(
@@ -279,149 +383,243 @@ class DashboardPage extends StatelessWidget {
   }
 
   Widget _buildItemsList() {
-    final items = [
-      {
-        'name': 'Microsoft Surface 4',
-        'sku': 'UEPYMGDO',
-        'stock': '80',
-        'min': '1000',
-        'max': '1400',
-        'image': 'assets/images/sign_in_up_page/1.png',
-      },
-      {
-        'name': 'Acer Nitro 5',
-        'sku': 'OMCZHYVIX',
-        'stock': '75',
-        'min': '1200',
-        'max': '1500',
-        'image': 'assets/images/sign_in_up_page/1.png',
-      },
-      {
-        'name': 'Hp monoblock 12',
-        'sku': 'IQHPVMSD',
-        'stock': '15',
-        'min': '650',
-        'max': '800',
-        'image': 'assets/images/sign_in_up_page/1.png',
-      },
-      {
-        'name': 'Apple MacBook Pro 14',
-        'sku': 'SMXAPGAID',
-        'stock': '45',
-        'min': '1800',
-        'max': '2500',
-        'image': 'assets/images/sign_in_up_page/1.png',
-      },
-      {
-        'name': 'Lenovo ThinkPad',
-        'sku': 'LNPHLUKGQL',
-        'stock': '50',
-        'min': '950',
-        'max': '1200',
-        'image': 'assets/images/sign_in_up_page/1.png',
-      },
-    ];
+    if (isLoading) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(20),
+          child: CircularProgressIndicator(
+            color: Color(0xFF3B82F6),
+          ),
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Center(
+        child: Column(
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Color(0xFFEF4444),
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading products',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              errorMessage!,
+              style: const TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadProducts,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (items.isEmpty) {
+      return const Center(
+        child: Column(
+          children: [
+            Icon(
+              Icons.inventory_2_outlined,
+              color: Color(0xFF64748B),
+              size: 48,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No products found',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Add some products to get started',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Column(
       children: items
-          .map(
-            (item) => _buildItemCard(
-              name: item['name']!,
-              sku: item['sku']!,
-              stock: item['stock']!,
-              min: item['min']!,
-              max: item['max']!,
-              imagePath: item['image']!,
-            ),
-          )
+          .map((item) => _buildItemCard(item))
           .toList(),
     );
   }
 
-  Widget _buildItemCard({
-    required String name,
-    required String sku,
-    required String stock,
-    required String min,
-    required String max,
-    required String imagePath,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: const Color(0xFF334155),
-              borderRadius: BorderRadius.circular(8),
+  Widget _buildItemCard(ItemModel item) {
+    return GestureDetector(
+      onTap: () {
+        // Chuyển đến trang chi tiết sản phẩm
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (context) => ItemDetailsPage(
+              item: {
+                'name': item.name,
+                'sku': item.sku,
+                'cost': item.cost,
+                'price': item.price,
+                'stock': item.stock.toString(),
+              },
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Image.asset(
-                imagePath,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return const Icon(
-                    Icons.laptop,
-                    color: Colors.white54,
-                    size: 24,
-                  );
-                },
+          ),
+        );
+      },
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF334155),
+            width: 1,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: Row(
+          children: [
+            // Product Image
+            Container(
+              width: 50,
+              height: 50,
+              decoration: BoxDecoration(
+                color: const Color(0xFF334155),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: item.image.startsWith('http')
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: Image.network(
+                        item.image,
+                        fit: BoxFit.cover,
+                        errorBuilder: (context, error, stackTrace) {
+                          return const Center(
+                            child: Icon(
+                              Icons.laptop,
+                              color: Color(0xFF64748B),
+                              size: 24,
+                            ),
+                          );
+                        },
+                      ),
+                    )
+                  : Center(
+                      child: Text(
+                        item.image.isEmpty ? '💻' : item.image,
+                        style: const TextStyle(fontSize: 24),
+                      ),
+                    ),
+            ),
+            const SizedBox(width: 16),
+            // Product Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    item.name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'SKU: ${item.sku}',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Text(
+                        'Cost: ${item.cost}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Text(
+                        'Price: ${item.price}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
-                  ),
+            // Stock Number
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: _getStockColor(item.stock),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Text(
+                item.stock.toString(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  'SKU: $sku',
-                  style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                ),
-                const SizedBox(height: 4),
-                Row(
-                  children: [
-                    Text(
-                      min,
-                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                    ),
-                    const SizedBox(width: 16),
-                    Text(
-                      max,
-                      style: TextStyle(color: Colors.grey[400], fontSize: 12),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
-          Text(
-            stock,
-            style: const TextStyle(
-              color: Color(0xFF3B82F6),
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  Color _getStockColor(int stock) {
+    if (stock >= 70) {
+      return const Color(0xFF3B82F6); // Blue for high stock
+    } else if (stock >= 40) {
+      return const Color(0xFF50C878); // Green for medium stock
+    } else if (stock >= 20) {
+      return const Color(0xFFFF8C00); // Orange for low stock
+    } else {
+      return const Color(0xFFFF6B6B); // Red for very low stock
+    }
   }
 }
