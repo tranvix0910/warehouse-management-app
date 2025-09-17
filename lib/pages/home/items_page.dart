@@ -1,22 +1,56 @@
 import 'package:flutter/material.dart';
 import '../items/details_page.dart';
+import '../items/add_item_page.dart';
+import '../../apis/get_all_product_api.dart';
 
 class ItemModel {
+  final String id;
   final String name;
   final String sku;
   final String cost;
   final String price;
   final int stock;
   final String image;
+  final String category;
+  final String ram;
+  final String date;
+  final String gpu;
+  final String color;
+  final String processor;
 
   ItemModel({
+    required this.id,
     required this.name,
     required this.sku,
     required this.cost,
     required this.price,
     required this.stock,
     required this.image,
+    required this.category,
+    required this.ram,
+    required this.date,
+    required this.gpu,
+    required this.color,
+    required this.processor,
   });
+
+  factory ItemModel.fromJson(Map<String, dynamic> json) {
+    return ItemModel(
+      id: json['_id'] ?? '',
+      name: json['productName'] ?? '',
+      sku: json['SKU'] ?? '',
+      cost: '${json['cost']} USD',
+      price: '${json['price']} USD',
+      stock: json['quantity'] ?? 0,
+      image: json['image'] ?? '',
+      category: json['category'] ?? '',
+      ram: json['RAM'] ?? '',
+      date: json['date'] ?? '',
+      gpu: json['GPU'] ?? '',
+      color: json['color'] ?? '',
+      processor: json['processor'] ?? '',
+    );
+  }
 }
 
 class ItemsPage extends StatefulWidget {
@@ -27,48 +61,37 @@ class ItemsPage extends StatefulWidget {
 }
 
 class _ItemsPageState extends State<ItemsPage> {
-  final List<ItemModel> items = [
-    ItemModel(
-      name: 'Microsoft Surface 4',
-      sku: 'UEPYMGDO',
-      cost: '1000 USD',
-      price: '1400 USD',
-      stock: 80,
-      image: '📱',
-    ),
-    ItemModel(
-      name: 'Acer Nitro 5',
-      sku: 'OMCZHYVX',
-      cost: '1200 USD',
-      price: '1500 USD',
-      stock: 75,
-      image: '💻',
-    ),
-    ItemModel(
-      name: 'Hp monoblock 12',
-      sku: 'IQHPVMSD',
-      cost: '650 USD',
-      price: '800 USD',
-      stock: 15,
-      image: '🖥️',
-    ),
-    ItemModel(
-      name: 'Apple MacBook Pro 14',
-      sku: 'SMXAPGAID',
-      cost: '1800 USD',
-      price: '2500 USD',
-      stock: 45,
-      image: '💻',
-    ),
-    ItemModel(
-      name: 'Lenovo ThinkPad',
-      sku: 'NNEUUUKXCL',
-      cost: '950 USD',
-      price: '1200 USD',
-      stock: 50,
-      image: '💻',
-    ),
-  ];
+  List<ItemModel> items = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final response = await GetAllProductsApi.getAllProducts();
+      final List<dynamic> productsData = response['data'] ?? [];
+      
+      setState(() {
+        items = productsData.map((json) => ItemModel.fromJson(json)).toList();
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -95,9 +118,9 @@ class _ItemsPageState extends State<ItemsPage> {
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: _loadProducts,
             icon: const Icon(
-              Icons.sort,
+              Icons.refresh,
               color: Colors.white,
             ),
           ),
@@ -107,8 +130,21 @@ class _ItemsPageState extends State<ItemsPage> {
               color: Colors.white,
             ),
             color: const Color(0xFF1E293B),
-            onSelected: (value) {
-              // Handle menu selection
+            onSelected: (value) async {
+              if (value == 'add') {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const AddItemPage(),
+                  ),
+                );
+                
+                // If a product was successfully added, refresh the list
+                if (result == true) {
+                  _loadProducts();
+                }
+              }
+              // Handle other menu selections
             },
             itemBuilder: (BuildContext context) => [
               const PopupMenuItem<String>(
@@ -143,12 +179,133 @@ class _ItemsPageState extends State<ItemsPage> {
           ),
         ],
       ),
-      body: ListView.builder(
+      body: _buildBody(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () async {
+          final result = await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const AddItemPage(),
+            ),
+          );
+          
+          // If a product was successfully added, refresh the list
+          if (result == true) {
+            _loadProducts();
+          }
+        },
+        backgroundColor: const Color(0xFF3B82F6),
+        icon: const Icon(
+          Icons.add,
+          color: Colors.white,
+        ),
+        label: const Text(
+          'Add Item',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          color: Color(0xFF3B82F6),
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Color(0xFFEF4444),
+              size: 48,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error loading products',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 32),
+              child: Text(
+                errorMessage!,
+                style: const TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 14,
+                ),
+                textAlign: TextAlign.center,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loadProducts,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (items.isEmpty) {
+      return const Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.inventory_2_outlined,
+              color: Color(0xFF64748B),
+              size: 48,
+            ),
+            SizedBox(height: 16),
+            Text(
+              'No products found',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            SizedBox(height: 8),
+            Text(
+              'Add some products to get started',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadProducts,
+      color: const Color(0xFF3B82F6),
+      backgroundColor: const Color(0xFF1E293B),
+      child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: items.length,
         itemBuilder: (context, index) {
           final item = items[index];
-                    return GestureDetector(
+          return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
@@ -183,102 +340,102 @@ class _ItemsPageState extends State<ItemsPage> {
                   ),
                 ],
               ),
-            child: Row(
-              children: [
-                // Product Image
-                Container(
-                  width: 50,
-                  height: 50,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF334155),
-                    borderRadius: BorderRadius.circular(8),
+              child: Row(
+                children: [
+                  // Product Image
+                  Container(
+                    width: 50,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF334155),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: item.image.startsWith('http')
+                        ? ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: Image.network(
+                              item.image,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Center(
+                                  child: Icon(
+                                    Icons.laptop,
+                                    color: Color(0xFF64748B),
+                                    size: 24,
+                                  ),
+                                );
+                              },
+                            ),
+                          )
+                        : Center(
+                            child: Text(
+                              item.image.isEmpty ? '💻' : item.image,
+                              style: const TextStyle(fontSize: 24),
+                            ),
+                          ),
                   ),
-                  child: Center(
+                  const SizedBox(width: 16),
+                  // Product Info
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          item.name,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'SKU: ${item.sku}',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Cost: ${item.cost}',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Price: ${item.price}',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  // Stock Number
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: _getStockColor(item.stock),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     child: Text(
-                      item.image,
-                      style: const TextStyle(fontSize: 24),
+                      item.stock.toString(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                // Product Info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        item.name,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'SKU: ${item.sku}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Cost: ${item.cost}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Price: ${item.price}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                // Stock Number
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: _getStockColor(item.stock),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text(
-                    item.stock.toString(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
             ),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Add new item
-        },
-        backgroundColor: const Color(0xFF3B82F6),
-        icon: const Icon(
-          Icons.add,
-          color: Colors.white,
-        ),
-        label: const Text(
-          'Add Item',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
       ),
     );
   }

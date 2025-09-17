@@ -147,7 +147,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
                           child: Image.asset(
-                            'assets/images/surface.png',
+                            'assets/images/sign_in_up_page/1.png',
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) {
                               return const Icon(
