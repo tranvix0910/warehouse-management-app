@@ -1,51 +1,33 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
-import '../config/api_constants.dart';
-import '../utils/token_storage.dart';
+import 'package:dio/dio.dart';
+import 'api_client.dart';
 
 class GetAllProductsApi {
   static Future<Map<String, dynamic>> getAllProducts() async {
-    final accessToken = await TokenStorage.getAccessToken();
-    
-    if (accessToken == null) {
-      throw Exception('No access token found. Please login again.');
-    }
-
-    final uri = Uri.parse('${ApiConstants.baseUrl}/products/all');
-    final res = await http.get(
-      uri,
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': 'Bearer $accessToken',
-        'accept': 'application/json',
-      },
-    );
-
-    final Map<String, dynamic> body = _safeDecode(res.body);
-    
-    if (res.statusCode == 200 && body['success'] == true) {
-      return body;
-    }
-    
-    // Handle different error cases
-    if (res.statusCode == 401) {
-      throw Exception('Unauthorized. Please login again.');
-    } else if (res.statusCode == 403) {
-      throw Exception('Access forbidden. Insufficient permissions.');
-    } else if (res.statusCode == 404) {
-      throw Exception('Products endpoint not found.');
-    } else if (res.statusCode >= 500) {
-      throw Exception('Server error. Please try again later.');
-    }
-    
-    throw Exception(body['message'] ?? 'Failed to get products (${res.statusCode})');
-  }
-
-  static Map<String, dynamic> _safeDecode(String source) {
     try {
-      return jsonDecode(source) as Map<String, dynamic>;
-    } catch (_) {
-      return <String, dynamic>{};
+      final response = await ApiClient.dio.get('/products/all');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
+      }
+      throw Exception(response.data['message'] ?? 'Failed to load products');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final statusCode = e.response!.statusCode;
+        final errorData = e.response!.data;
+        
+        if (statusCode == 401) {
+          throw Exception('Unauthorized. Please login again.');
+        } else if (statusCode == 403) {
+          throw Exception('Access forbidden. Insufficient permissions.');
+        } else if (statusCode == 404) {
+          throw Exception('Products endpoint not found.');
+        } else if (statusCode! >= 500) {
+          throw Exception('Server error. Please try again later.');
+        }
+        
+        throw Exception(errorData['message'] ?? 'Failed to get products ($statusCode)');
+      }
+      throw Exception('Network error: ${e.message}');
     }
   }
 }
