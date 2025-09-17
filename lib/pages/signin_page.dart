@@ -60,7 +60,8 @@ class _SignInPageState extends State<SignInPage> {
         showErrorSnackTop(context, body['message'] ?? 'Login failed');
       }
     } catch (e) {
-      showErrorSnackTop(context, 'Network error. Please try again.');
+      final message = e.toString().replaceFirst('Exception: ', '');
+      showErrorSnackTop(context, message);
     } finally {
       if (mounted) {
         setState(() {
