@@ -47,4 +47,5 @@ class TokenStorage {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('user');
   }
+
 }
