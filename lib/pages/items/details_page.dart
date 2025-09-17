@@ -5,9 +5,9 @@ class ItemDetailsPage extends StatefulWidget {
   final Map<String, String> item;
 
   const ItemDetailsPage({
-    Key? key,
+    super.key,
     required this.item,
-  }) : super(key: key);
+  });
 
   @override
   State<ItemDetailsPage> createState() => _ItemDetailsPageState();

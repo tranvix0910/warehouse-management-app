@@ -5,7 +5,7 @@ import '../../models/transaction_models.dart';
 import '../../utils/snack_bar.dart';
 
 class TransactionsPage extends StatefulWidget {
-  const TransactionsPage({Key? key}) : super(key: key);
+  const TransactionsPage({super.key});
 
   @override
   State<TransactionsPage> createState() => _TransactionsPageState();

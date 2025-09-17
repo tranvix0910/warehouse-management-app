@@ -17,7 +17,7 @@ class ReportItem {
 }
 
 class ReportPage extends StatefulWidget {
-  const ReportPage({Key? key}) : super(key: key);
+  const ReportPage({super.key});
 
   @override
   State<ReportPage> createState() => _ReportPageState();

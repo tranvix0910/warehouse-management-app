@@ -40,7 +40,7 @@ class FirebaseEnvironmentService {
     return ref.onValue.map((event) {
       final value = event.snapshot.value;
       if (value is Map) {
-        return EnvironmentReading.fromMap(value as Map<dynamic, dynamic>);
+        return EnvironmentReading.fromMap(value);
       }
       // Support a nested map like { temperature: x, humidity: y }
       return const EnvironmentReading(
