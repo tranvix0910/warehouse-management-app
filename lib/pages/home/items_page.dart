@@ -20,7 +20,7 @@ class ItemModel {
 }
 
 class ItemsPage extends StatefulWidget {
-  const ItemsPage({Key? key}) : super(key: key);
+  const ItemsPage({super.key});
 
   @override
   State<ItemsPage> createState() => _ItemsPageState();
