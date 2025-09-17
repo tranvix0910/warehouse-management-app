@@ -52,9 +52,6 @@ class DashboardPage extends StatelessWidget {
         final String? avatarURL = user?['avatar'];
         return Row(
           children: [
-            Text(
-              'Hello',
-              style: TextStyle(color: Colors.grey[400], fontSize: 14),
             CircleAvatar(
               radius: 25,
               backgroundColor: const Color(0xFF3B82F6),
