@@ -1,22 +1,8 @@
 import 'package:flutter/material.dart';
-
-enum TransactionType { stockIn, stockOut }
-
-class TransactionModel {
-  final TransactionType type;
-  final int quantity;
-  final int items;
-  final String party; // Supplier for Stock In, Customer for Stock Out
-  final String date;
-
-  TransactionModel({
-    required this.type,
-    required this.quantity,
-    required this.items,
-    required this.party,
-    required this.date,
-  });
-}
+import 'package:intl/intl.dart';
+import '../../apis/transaction_api.dart';
+import '../../models/transaction_models.dart';
+import '../../utils/snack_bar.dart';
 
 class TransactionsPage extends StatefulWidget {
   const TransactionsPage({Key? key}) : super(key: key);
@@ -26,50 +12,56 @@ class TransactionsPage extends StatefulWidget {
 }
 
 class _TransactionsPageState extends State<TransactionsPage> {
-  final List<TransactionModel> transactions = [
-    TransactionModel(
-      type: TransactionType.stockIn,
-      quantity: 40,
-      items: 2,
-      party: 'Acer Corporation',
-      date: 'Oct 11, 2024',
-    ),
-    TransactionModel(
-      type: TransactionType.stockOut,
-      quantity: -58,
-      items: 2,
-      party: 'Sarah Williams',
-      date: 'Oct 11, 2024',
-    ),
-    TransactionModel(
-      type: TransactionType.stockIn,
-      quantity: 181,
-      items: 3,
-      party: 'HP corporation',
-      date: 'Oct 11, 2024',
-    ),
-    TransactionModel(
-      type: TransactionType.stockOut,
-      quantity: -40,
-      items: 2,
-      party: 'John Carter',
-      date: 'Oct 11, 2024',
-    ),
-    TransactionModel(
-      type: TransactionType.stockIn,
-      quantity: 65,
-      items: 2,
-      party: 'Acer Corporation',
-      date: 'Oct 11, 2024',
-    ),
-    TransactionModel(
-      type: TransactionType.stockIn,
-      quantity: 73,
-      items: 3,
-      party: 'Dell Technologies',
-      date: 'Oct 11, 2024',
-    ),
-  ];
+  List<Transaction> transactions = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTransactions();
+  }
+
+  Future<void> _loadTransactions() async {
+    try {
+      setState(() {
+        isLoading = true;
+        errorMessage = null;
+      });
+
+      final response = await GetAllTransactionsApi.getAllTransactions();
+      final transactionResponse = TransactionResponse.fromJson(response);
+
+      if (transactionResponse.success) {
+        setState(() {
+          transactions = transactionResponse.data;
+          isLoading = false;
+        });
+      } else {
+        setState(() {
+          errorMessage = transactionResponse.message;
+          isLoading = false;
+        });
+      }
+    } catch (e) {
+      setState(() {
+        errorMessage = e.toString();
+        isLoading = false;
+      });
+      if (mounted) {
+        showErrorSnackTop(context, 'Failed to load transactions: ${e.toString()}');
+      }
+    }
+  }
+
+  String _formatDate(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      return DateFormat('MMM dd, yyyy').format(date);
+    } catch (e) {
+      return dateString;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,12 +122,120 @@ class _TransactionsPageState extends State<TransactionsPage> {
           ),
         ],
       ),
-      body: ListView.builder(
+      body: _buildBody(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          // Add new transaction
+        },
+        backgroundColor: const Color(0xFF3B82F6),
+        icon: const Icon(
+          Icons.add,
+          color: Colors.white,
+        ),
+        label: const Text(
+          'New Transaction',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    if (isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(
+          valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+        ),
+      );
+    }
+
+    if (errorMessage != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.error_outline,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Failed to load transactions',
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              errorMessage!,
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 14,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: _loadTransactions,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF3B82F6),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (transactions.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No transactions found',
+              style: TextStyle(
+                color: Colors.grey[400],
+                fontSize: 18,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Start by creating your first transaction',
+              style: TextStyle(
+                color: Colors.grey[500],
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      onRefresh: _loadTransactions,
+      backgroundColor: const Color(0xFF1E293B),
+      color: const Color(0xFF3B82F6),
+      child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: transactions.length,
         itemBuilder: (context, index) {
           final transaction = transactions[index];
-          final isStockIn = transaction.type == TransactionType.stockIn;
+          final isStockIn = transaction.isStockIn;
           
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
@@ -181,7 +281,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      '${transaction.quantity > 0 ? '+' : ''}${transaction.quantity}',
+                      '${isStockIn ? '+' : '-'}${transaction.quantity}',
                       style: TextStyle(
                         color: isStockIn 
                           ? const Color(0xFF3B82F6)
@@ -208,7 +308,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'Items: ${transaction.items}',
+                        'Items: ${transaction.itemCount}',
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 14,
@@ -217,19 +317,31 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       const SizedBox(height: 4),
                       Text(
                         isStockIn 
-                          ? 'Supplier: ${transaction.party}'
-                          : 'Customer: ${transaction.party}',
+                          ? 'Supplier: ${transaction.partyName}'
+                          : 'Customer: ${transaction.partyName}',
                         style: const TextStyle(
                           color: Colors.grey,
                           fontSize: 14,
                         ),
                       ),
+                      if (transaction.note != null && transaction.note!.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          'Note: ${transaction.note}',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 12,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 // Date
                 Text(
-                  transaction.date,
+                  _formatDate(transaction.date),
                   style: const TextStyle(
                     color: Colors.grey,
                     fontSize: 12,
@@ -239,23 +351,6 @@ class _TransactionsPageState extends State<TransactionsPage> {
             ),
           );
         },
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Add new transaction
-        },
-        backgroundColor: const Color(0xFF3B82F6),
-        icon: const Icon(
-          Icons.add,
-          color: Colors.white,
-        ),
-        label: const Text(
-          'New Transaction',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
       ),
     );
   }
