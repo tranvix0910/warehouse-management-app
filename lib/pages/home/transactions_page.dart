@@ -3,6 +3,8 @@ import 'package:intl/intl.dart';
 import '../../apis/transaction_api.dart';
 import '../../models/transaction_models.dart';
 import '../../utils/snack_bar.dart';
+import '../transactions/stock_in_page.dart';
+import '../transactions/stock_out_page.dart';
 
 class TransactionsPage extends StatefulWidget {
   const TransactionsPage({super.key});
@@ -61,6 +63,190 @@ class _TransactionsPageState extends State<TransactionsPage> {
     } catch (e) {
       return dateString;
     }
+  }
+
+  void _showNewTransactionModal() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E293B),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
+          ),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // Title
+                const Text(
+                  'New Transaction',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 24),
+                
+                // Stock In Option
+                _buildTransactionOption(
+                  icon: Icons.keyboard_arrow_down,
+                  iconColor: const Color(0xFF3B82F6),
+                  backgroundColor: const Color(0xFF3B82F6).withOpacity(0.1),
+                  title: 'Stock In',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _handleStockIn();
+                  },
+                ),
+                
+                const SizedBox(height: 16),
+                
+                // Stock Out Option
+                _buildTransactionOption(
+                  icon: Icons.keyboard_arrow_up,
+                  iconColor: const Color(0xFFFF6B6B),
+                  backgroundColor: const Color(0xFFFF6B6B).withOpacity(0.1),
+                  title: 'Stock Out',
+                  onTap: () {
+                    Navigator.pop(context);
+                    _handleStockOut();
+                  },
+                ),
+                
+                const SizedBox(height: 24),
+                
+                // Cancel Button
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                    ),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(
+                        color: Colors.grey,
+                        fontSize: 16,
+                      ),
+                    ),
+                  ),
+                ),
+                
+                // Bottom padding for safe area
+                SizedBox(height: MediaQuery.of(context).padding.bottom),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTransactionOption({
+    required IconData icon,
+    required Color iconColor,
+    required Color backgroundColor,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF334155),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                icon,
+                color: iconColor,
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  )
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios,
+              color: Colors.grey[600],
+              size: 16,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _handleStockIn() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const StockInPage(),
+      ),
+    ).then((_) {
+      // Refresh transactions when returning from Stock In page
+      _loadTransactions();
+    });
+  }
+
+  void _handleStockOut() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => const StockOutPage(),
+      ),
+    ).then((_) {
+      // Refresh transactions when returning from Stock Out page
+      _loadTransactions();
+    });
   }
 
   @override
@@ -123,23 +309,21 @@ class _TransactionsPageState extends State<TransactionsPage> {
         ],
       ),
       body: _buildBody(),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () {
-          // Add new transaction
-        },
-        backgroundColor: const Color(0xFF3B82F6),
-        icon: const Icon(
-          Icons.add,
-          color: Colors.white,
-        ),
-        label: const Text(
-          'New Transaction',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
+       floatingActionButton: FloatingActionButton.extended(
+         onPressed: _showNewTransactionModal,
+         backgroundColor: const Color(0xFF3B82F6),
+         icon: const Icon(
+           Icons.add,
+           color: Colors.white,
+         ),
+         label: const Text(
+           'New Transaction',
+           style: TextStyle(
+             color: Colors.white,
+             fontWeight: FontWeight.w600,
+           ),
+         ),
+       ),
     );
   }
 

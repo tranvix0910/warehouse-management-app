@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../items/details_page.dart';
 import '../items/add_item_page.dart';
-import '../../apis/product_api.dart';
+import '../../services/product_service.dart';
 
 class ItemModel {
   final String id;
@@ -78,11 +78,24 @@ class _ItemsPageState extends State<ItemsPage> {
         errorMessage = null;
       });
 
-      final response = await GetAllProductsApi.getAllProducts();
-      final List<dynamic> productsData = response['data'] ?? [];
+      final products = await ProductService.instance.getProducts(forceRefresh: true);
       
       setState(() {
-        items = productsData.map((json) => ItemModel.fromJson(json)).toList();
+        items = products.map((product) => ItemModel(
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          cost: '${product.cost} USD',
+          price: '${product.price} USD',
+          stock: product.quantity,
+          image: product.image,
+          category: product.category,
+          ram: product.ram,
+          date: product.date,
+          gpu: product.gpu,
+          color: product.color,
+          processor: product.processor,
+        )).toList();
         isLoading = false;
       });
     } catch (e) {
