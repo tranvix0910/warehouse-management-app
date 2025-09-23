@@ -17,6 +17,19 @@ class _SignUpPageState extends State<SignUpPage> {
   bool _obscurePassword = true;
   bool _isLoading = false;
 
+  bool get _hasMinLength => _passwordController.text.length >= 8;
+  bool get _hasUppercase => RegExp(r'[A-Z]').hasMatch(_passwordController.text);
+  bool get _hasLowercase => RegExp(r'[a-z]').hasMatch(_passwordController.text);
+  bool get _hasNumber => RegExp(r'\d').hasMatch(_passwordController.text);
+  bool get _hasSpecial =>
+      RegExp(r'[!@#\$%\^&\*(),.?":{}|<>]').hasMatch(_passwordController.text);
+  bool get _isPasswordValid =>
+      _hasMinLength &&
+      _hasUppercase &&
+      _hasLowercase &&
+      _hasNumber &&
+      _hasSpecial;
+
   @override
   void dispose() {
     _emailController.dispose();
@@ -39,6 +52,9 @@ class _SignUpPageState extends State<SignUpPage> {
       showErrorSnackTop(context, 'Please accept the terms');
       return;
     }
+
+    // Chặn submit nếu password chưa đạt yêu cầu (không show snack)
+    if (!_isPasswordValid) return;
 
     setState(() => _isLoading = true);
 
@@ -377,9 +393,19 @@ class _SignUpPageState extends State<SignUpPage> {
                                   },
                                 ),
                               ),
+                              onChanged: (_) => setState(() {}),
                             ),
                           ),
                         ],
+                      ),
+
+                      const SizedBox(height: 6),
+                      _PasswordRequirements(
+                        hasMinLength: _hasMinLength,
+                        hasUppercase: _hasUppercase,
+                        hasLowercase: _hasLowercase,
+                        hasNumber: _hasNumber,
+                        hasSpecial: _hasSpecial,
                       ),
 
                       SizedBox(height: constraints.maxHeight > 600 ? 12 : 8),
@@ -460,10 +486,14 @@ class _SignUpPageState extends State<SignUpPage> {
                         width: double.infinity,
                         height: 60,
                         child: ElevatedButton(
-                          onPressed: _isLoading ? null : _signUp,
+                          onPressed:
+                              _isLoading || !_acceptTerms || !_isPasswordValid
+                              ? null
+                              : _signUp,
                           style:
                               ElevatedButton.styleFrom(
-                                backgroundColor: _acceptTerms
+                                backgroundColor:
+                                    _acceptTerms && _isPasswordValid
                                     ? const Color(0xFF4A90E2)
                                     : Colors.grey[600],
                                 foregroundColor: Colors.white,
@@ -471,12 +501,12 @@ class _SignUpPageState extends State<SignUpPage> {
                                   borderRadius: BorderRadius.circular(16),
                                 ),
                                 elevation: 0,
-                                shadowColor: _acceptTerms
+                                shadowColor: _acceptTerms && _isPasswordValid
                                     ? const Color(0xFF4A90E2).withOpacity(0.3)
                                     : null,
                               ).copyWith(
                                 overlayColor: WidgetStateProperty.all(
-                                  _acceptTerms
+                                  _acceptTerms && _isPasswordValid
                                       ? Colors.white.withOpacity(0.1)
                                       : Colors.transparent,
                                 ),
@@ -498,7 +528,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                     Icon(
                                       Icons.person_add_outlined,
                                       size: 24,
-                                      color: _acceptTerms
+                                      color: _acceptTerms && _isPasswordValid
                                           ? Colors.white
                                           : Colors.grey[400],
                                     ),
@@ -509,7 +539,7 @@ class _SignUpPageState extends State<SignUpPage> {
                                         fontSize: 18,
                                         fontWeight: FontWeight.w600,
                                         letterSpacing: 0.5,
-                                        color: _acceptTerms
+                                        color: _acceptTerms && _isPasswordValid
                                             ? Colors.white
                                             : Colors.grey[400],
                                       ),
@@ -527,6 +557,67 @@ class _SignUpPageState extends State<SignUpPage> {
             );
           },
         ),
+      ),
+    );
+  }
+}
+
+class _PasswordRequirements extends StatelessWidget {
+  final bool hasMinLength;
+  final bool hasUppercase;
+  final bool hasLowercase;
+  final bool hasNumber;
+  final bool hasSpecial;
+
+  const _PasswordRequirements({
+    required this.hasMinLength,
+    required this.hasUppercase,
+    required this.hasLowercase,
+    required this.hasNumber,
+    required this.hasSpecial,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _RequirementRow(met: hasMinLength, label: 'At least 8 characters'),
+        _RequirementRow(met: hasUppercase, label: 'Contains uppercase letter'),
+        _RequirementRow(met: hasLowercase, label: 'Contains lowercase letter'),
+        _RequirementRow(met: hasNumber, label: 'Contains a number'),
+        _RequirementRow(met: hasSpecial, label: 'Contains special character'),
+      ],
+    );
+  }
+}
+
+class _RequirementRow extends StatelessWidget {
+  final bool met;
+  final String label;
+
+  const _RequirementRow({required this.met, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        children: [
+          Icon(
+            met ? Icons.check_circle : Icons.radio_button_unchecked,
+            size: 18,
+            color: met ? const Color(0xFF22C55E) : Colors.grey[500],
+          ),
+          const SizedBox(width: 8),
+          Text(
+            label,
+            style: TextStyle(
+              color: met ? const Color(0xFF22C55E) : Colors.grey[300],
+              fontSize: 13,
+            ),
+          ),
+        ],
       ),
     );
   }
