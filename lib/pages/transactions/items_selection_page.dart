@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../services/product_service.dart';
 
 class SelectedItem {
@@ -142,19 +143,7 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
     });
   }
 
-  void _toggleItemSelection(ProductModel product) {
-    setState(() {
-      final existingIndex = selectedItems.indexWhere((item) => item.product.id == product.id);
-      
-      if (existingIndex >= 0) {
-        // Item already selected, remove it
-        selectedItems.removeAt(existingIndex);
-      } else {
-        // Item not selected, add it
-        selectedItems.add(SelectedItem(product: product, quantity: 1));
-      }
-    });
-  }
+  // Selection is handled via quantity dialog on tap
 
   void _updateItemQuantity(String productId, int quantity) {
     setState(() {
@@ -186,86 +175,73 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
 
   void _showQuantityDialog(ProductModel product) {
     final currentQuantity = _getSelectedQuantity(product.id);
-    int newQuantity = currentQuantity > 0 ? currentQuantity : 1;
-    
+    final TextEditingController controller = TextEditingController(
+      text: currentQuantity > 0 ? currentQuantity.toString() : '',
+    );
+    bool isValid = currentQuantity > 0;
+
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          backgroundColor: const Color(0xFF1E293B),
-          title: Text(
-            'Select Quantity',
-            style: const TextStyle(color: Colors.white),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                product.name,
-                style: const TextStyle(color: Colors.grey),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            void onChanged(String value) {
+              final intVal = int.tryParse(value) ?? 0;
+              setState(() {
+                isValid = intVal > 0 && intVal <= product.quantity;
+              });
+            }
+
+            return AlertDialog(
+              backgroundColor: const Color(0xFF1E293B),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: const BorderSide(color: Color(0xFF334155), width: 1),
               ),
-              const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  IconButton(
-                    onPressed: () {
-                      if (newQuantity > 1) {
-                        setState(() {
-                          newQuantity--;
-                        });
-                      }
-                    },
-                    icon: const Icon(Icons.remove, color: Colors.white),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: const Color(0xFF334155)),
-                    ),
-                    child: Text(
-                      newQuantity.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    onPressed: () {
-                      if (newQuantity < product.quantity) {
-                        setState(() {
-                          newQuantity++;
-                        });
-                      }
-                    },
-                    icon: const Icon(Icons.add, color: Colors.white),
-                  ),
-                ],
+              title: const Text(
+                'Enter the quantity',
+                style: TextStyle(color: Colors.white),
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Available: ${product.quantity}',
-                style: TextStyle(color: Colors.grey[400], fontSize: 12),
+              content: TextField(
+                controller: controller,
+                autofocus: true,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                onChanged: onChanged,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  hintText: 'Quantity',
+                  hintStyle: TextStyle(color: Colors.grey),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF334155)),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Color(0xFF3B82F6)),
+                  ),
+                ),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            TextButton(
-              onPressed: () {
-                _updateItemQuantity(product.id, newQuantity);
-                Navigator.pop(context);
-              },
-              child: const Text('OK', style: TextStyle(color: Color(0xFF3B82F6))),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                ),
+                TextButton(
+                  onPressed: isValid
+                      ? () {
+                          final qty = int.tryParse(controller.text) ?? 0;
+                          if (!_isItemSelected(product.id) && qty > 0) {
+                            selectedItems.add(SelectedItem(product: product, quantity: qty));
+                          } else {
+                            _updateItemQuantity(product.id, qty);
+                          }
+                          Navigator.pop(context);
+                        }
+                      : null,
+                  child: const Text('Apply', style: TextStyle(color: Color(0xFF3B82F6))),
+                ),
+              ],
+            );
+          },
         );
       },
     );
@@ -504,13 +480,11 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
       itemBuilder: (context, index) {
         final product = filteredProducts[index];
         final isSelected = _isItemSelected(product.id);
-        final selectedQuantity = _getSelectedQuantity(product.id);
         
         return Container(
           margin: const EdgeInsets.only(bottom: 12),
           child: InkWell(
-            onTap: () => _toggleItemSelection(product),
-            onLongPress: () => _showQuantityDialog(product),
+            onTap: () => _showQuantityDialog(product),
             borderRadius: BorderRadius.circular(12),
             child: Container(
               padding: const EdgeInsets.all(16),
@@ -603,27 +577,6 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
                           ),
                         ),
                       ),
-                      if (isSelected) ...[
-                        const SizedBox(height: 8),
-                        GestureDetector(
-                          onTap: () => _showQuantityDialog(product),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF3B82F6),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: Text(
-                              'Qty: $selectedQuantity',
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ],
                     ],
                   ),
                 ],

@@ -13,7 +13,7 @@ import 'apis/api_client.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-   ApiClient.init();
+  ApiClient.init();
   runApp(DevicePreview(builder: (context) => const MyApp()));
 }
 

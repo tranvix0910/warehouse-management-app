@@ -5,6 +5,7 @@ import '../../models/transaction_models.dart';
 import '../../utils/snack_bar.dart';
 import '../transactions/stock_in_page.dart';
 import '../transactions/stock_out_page.dart';
+import '../transactions/transaction_detail_page.dart';
 
 class TransactionsPage extends StatefulWidget {
   const TransactionsPage({super.key});
@@ -421,25 +422,36 @@ class _TransactionsPageState extends State<TransactionsPage> {
           final transaction = transactions[index];
           final isStockIn = transaction.isStockIn;
           
-          return Container(
-            margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-          color: const Color(0xFF1E293B),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF334155),
-            width: 1,
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              blurRadius: 4,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-            child: Row(
+          return GestureDetector(
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TransactionDetailPage(
+                    transaction: transaction,
+                  ),
+                ),
+              );
+            },
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1E293B),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: const Color(0xFF334155),
+                  width: 1,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
               children: [
                 // Transaction Type Icon and Quantity
                 Column(
@@ -532,6 +544,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   ),
                 ),
               ],
+            ),
             ),
           );
         },
