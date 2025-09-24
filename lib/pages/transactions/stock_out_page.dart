@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'items_selection_page.dart';
+import '../../apis/add_transaction_api.dart';
 
 class StockOutPage extends StatefulWidget {
   const StockOutPage({super.key});
@@ -14,6 +15,7 @@ class _StockOutPageState extends State<StockOutPage> {
   String? selectedCustomer;
   String notes = '';
   List<Map<String, dynamic>> selectedItems = [];
+  bool _isSaving = false;
 
   @override
   Widget build(BuildContext context) {
@@ -71,7 +73,7 @@ class _StockOutPageState extends State<StockOutPage> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _saveStockOut,
+                onPressed: _isSaving ? null : _saveStockOut,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3B82F6),
                   foregroundColor: Colors.white,
@@ -80,13 +82,22 @@ class _StockOutPageState extends State<StockOutPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'Save',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                child: _isSaving
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : const Text(
+                        'Save',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -203,10 +214,23 @@ class _StockOutPageState extends State<StockOutPage> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.grey[600],
-              size: 16,
+            Row(
+              children: [
+                Text(
+                  notes.isEmpty ? '-' : notes,
+                  style: TextStyle(
+                    color: notes.isEmpty ? Colors.grey : Colors.white,
+                    fontSize: 16,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(width: 8),
+                Icon(
+                  Icons.arrow_forward_ios,
+                  color: Colors.grey[600],
+                  size: 16,
+                ),
+              ],
             ),
           ],
         ),
@@ -458,7 +482,7 @@ class _StockOutPageState extends State<StockOutPage> {
     });
   }
 
-  void _saveStockOut() {
+  Future<void> _saveStockOut() async {
     if (selectedCustomer == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -479,14 +503,39 @@ class _StockOutPageState extends State<StockOutPage> {
       return;
     }
 
-    // TODO: Implement save functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Stock Out saved successfully!'),
-        backgroundColor: Colors.green,
-      ),
-    );
-    
-    Navigator.pop(context);
+    try {
+      setState(() {
+        _isSaving = true;
+      });
+
+      final response = await AddTransactionApi.createStockOut(
+        customer: selectedCustomer!,
+        note: notes.isEmpty ? null : notes,
+        date: selectedDate,
+        items: selectedItems,
+      );
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(response['message'] ?? 'Stock Out saved successfully!'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      Navigator.pop(context, true);
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSaving = false;
+        });
+      }
+    }
   }
 }
