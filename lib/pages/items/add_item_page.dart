@@ -790,7 +790,7 @@ class _AddItemPageState extends State<AddItemPage> {
   void _showProcessorDialog() {
     _showSelectionDialog(
       title: 'Select Processor',
-      options: ['Intel Core i5-1135G7', 'Intel Core i5-1235U', 'Intel Core i5-10210U', 'Intel Core i5-11400H', 'Intel Core i7-1165G7', 'Intel Core i7-1195G7', 'Intel Core i7-1255U', 'Intel Core i7-1260P', 'Intel Core i7-10750H', 'Intel Core i7-11800H', 'Intel Core i7-12700H', 'AMD Ryzen 5 5800H', 'AMD Ryzen 7 5800H', 'Apple M2'],
+      options: ['Intel Core i5-11400H', 'Intel Core i7-1165G7', 'Intel Core i7-1195G7', 'Intel Core i7-1255U', 'Intel Core i7-1260P', 'Intel Core i7-10750H', 'Intel Core i7-11800H', 'Intel Core i7-12700H', 'AMD Ryzen 5 5800H', 'AMD Ryzen 7 5800H', 'Apple M2', 'Apple M3 Pro', 'Apple M1'],
       currentValue: _selectedProcessor,
       onSelected: (value) => setState(() => _selectedProcessor = value),
     );

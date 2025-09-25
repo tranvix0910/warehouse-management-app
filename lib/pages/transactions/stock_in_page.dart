@@ -3,6 +3,7 @@ import 'package:intl/intl.dart';
 import 'suppliers_page.dart';
 import 'items_selection_page.dart';
 import '../../apis/add_transaction_api.dart';
+import '../../utils/snack_bar.dart';
 
 class StockInPage extends StatefulWidget {
   const StockInPage({super.key});
@@ -251,156 +252,131 @@ class _StockInPageState extends State<StockInPage> {
       ),
       child: Column(
         children: [
-          // Items Header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Items',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w500,
+          // Items Header (tap to open selection)
+          InkWell(
+            onTap: _selectProducts,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Items',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-                Row(
-                  children: [
-                    Text(
-                      selectedItems.length.toString(),
-                      style: TextStyle(
-                        color: Colors.grey[400],
-                        fontSize: 16,
+                  Row(
+                    children: [
+                      Text(
+                        _totalSelectedQuantity().toString(),
+                        style: TextStyle(
+                          color: Colors.grey[400],
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 8),
-                    Icon(
-                      Icons.arrow_forward_ios,
-                      color: Colors.grey[600],
-                      size: 16,
-                    ),
-                  ],
-                ),
-              ],
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.arrow_forward_ios,
+                        color: Colors.grey[600],
+                        size: 16,
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
           
-          // Items Content
-          GestureDetector(
-            onTap: _selectProducts,
-            child: Container(
-              width: double.infinity,
-              child: selectedItems.isEmpty
-                  ? Container(
-                      padding: const EdgeInsets.all(32),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.inventory_2_outlined,
-                            size: 64,
-                            color: Colors.grey[600],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Select products',
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 16,
+          // Items Content (compact list with in-place steppers like screenshot)
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            child: selectedItems.isEmpty
+                ? Column(
+                    children: [
+                      const SizedBox(height: 8),
+                      Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[600]),
+                      const SizedBox(height: 12),
+                      Text('Select products', style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+                    ],
+                  )
+                : Column(
+                    children: selectedItems.map((item) {
+                      final int qty = (item['quantity'] is num)
+                          ? (item['quantity'] as num).toInt()
+                          : int.tryParse('${item['quantity']}') ?? 0;
+                      return Container(
+                        margin: const EdgeInsets.symmetric(vertical: 6),
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF0F172A),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: const Color(0xFF334155)),
+                        ),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 36,
+                              height: 36,
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF334155),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: (item['image'] is String && (item['image'] as String).startsWith('http'))
+                                  ? ClipRRect(
+                                      borderRadius: BorderRadius.circular(6),
+                                      child: Image.network(item['image'], fit: BoxFit.cover),
+                                    )
+                                  : const Icon(Icons.laptop, color: Color(0xFF64748B), size: 18),
                             ),
-                          ),
-                        ],
-                      ),
-                    )
-                  : Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        children: selectedItems.map((item) => Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF0F172A),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: const Color(0xFF334155)),
-                          ),
-                          child: Row(
-                            children: [
-                              Container(
-                                width: 40,
-                                height: 40,
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF334155),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: item['image'] != null && item['image'].startsWith('http')
-                                    ? ClipRRect(
-                                        borderRadius: BorderRadius.circular(6),
-                                        child: Image.network(
-                                          item['image'],
-                                          fit: BoxFit.cover,
-                                          errorBuilder: (context, error, stackTrace) {
-                                            return const Icon(
-                                              Icons.laptop,
-                                              color: Color(0xFF64748B),
-                                              size: 20,
-                                            );
-                                          },
-                                        ),
-                                      )
-                                    : const Icon(
-                                        Icons.laptop,
-                                        color: Color(0xFF64748B),
-                                        size: 20,
-                                      ),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                item['name'] ?? '',
+                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
+                                overflow: TextOverflow.ellipsis,
                               ),
-                              const SizedBox(width: 12),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      item['name'] ?? '',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 14,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                    ),
-                                    Text(
-                                      'SKU: ${item['sku'] ?? ''}',
-                                      style: TextStyle(
-                                        color: Colors.grey[400],
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF3B82F6),
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                child: Text(
-                                  'Qty: ${item['quantity']}',
-                                  style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        )).toList(),
-                      ),
-                    ),
-            ),
+                            ),
+                            _MiniStepper(
+                              quantity: qty,
+                              onDecrement: () {
+                                setState(() {
+                                  final next = qty - 1;
+                                  if (next <= 0) {
+                                    selectedItems.remove(item);
+                                  } else {
+                                    item['quantity'] = next;
+                                  }
+                                });
+                              },
+                              onIncrement: () {
+                                setState(() {
+                                  item['quantity'] = qty + 1;
+                                });
+                              },
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
           ),
         ],
       ),
     );
+  }
+
+  int _totalSelectedQuantity() {
+    int total = 0;
+    for (final item in selectedItems) {
+      final dynamic q = item['quantity'];
+      if (q is num) total += q.toInt();
+      else total += int.tryParse('$q') ?? 0;
+    }
+    return total;
   }
 
   Future<void> _selectDate() async {
@@ -532,28 +508,39 @@ class _StockInPageState extends State<StockInPage> {
         _isSaving = true;
       });
 
+      // Transform items to required API shape and validate product ids
+      final List<Map<String, dynamic>> itemsForApi = selectedItems.map((item) {
+        final dynamic pid = item['productId'] ?? item['product'] ?? item['_id'] ?? item['id'];
+        final dynamic qty = item['quantity'];
+        return {
+          'product': pid,
+          'quantity': (qty is num) ? qty.toInt() : int.tryParse(qty?.toString() ?? '0') ?? 0,
+        };
+      }).toList();
+
+      final hasInvalid = itemsForApi.any((i) => i['product'] == null || (i['quantity'] as int) <= 0);
+      if (hasInvalid) {
+        throw Exception('Invalid selected items. Please reselect products and quantities.');
+      }
+
       final response = await AddTransactionApi.createStockIn(
         supplier: selectedSupplier!,
         note: notes.isEmpty ? null : notes,
         date: selectedDate,
-        items: selectedItems,
+        items: itemsForApi,
       );
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(response['message'] ?? 'Stock In saved successfully!'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      if (mounted) {
+        // ignore: use_build_context_synchronously
+        showSuccessSnackTop(context, response['message'] ?? 'Transaction created successfully');
+      }
 
       Navigator.pop(context, true);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.toString().replaceFirst('Exception: ', '')),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        // ignore: use_build_context_synchronously
+        showErrorSnackTop(context, e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       if (mounted) {
         setState(() {
@@ -561,5 +548,70 @@ class _StockInPageState extends State<StockInPage> {
         });
       }
     }
+  }
+}
+
+class _MiniStepper extends StatelessWidget {
+  final int quantity;
+  final VoidCallback onDecrement;
+  final VoidCallback onIncrement;
+
+  const _MiniStepper({
+    required this.quantity,
+    required this.onDecrement,
+    required this.onIncrement,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF111827),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF334155)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _MiniBtn(icon: Icons.remove, onPressed: onDecrement),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            child: Text(
+              quantity.toString(),
+              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+            ),
+          ),
+          _MiniBtn(icon: Icons.add, onPressed: onIncrement),
+        ],
+      ),
+    );
+  }
+}
+
+class _MiniBtn extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onPressed;
+
+  const _MiniBtn({
+    required this.icon,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onPressed,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        width: 32,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: const Color(0xFF1F2937),
+          borderRadius: BorderRadius.circular(6),
+        ),
+        child: Icon(icon, size: 16, color: Colors.white),
+      ),
+    );
   }
 }

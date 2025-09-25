@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'add_supplier_page.dart';
+import '../../apis/suppliers_api.dart';
+import '../../utils/snack_bar.dart';
 
 class Supplier {
   final String id;
@@ -37,32 +39,15 @@ class SuppliersPage extends StatefulWidget {
 }
 
 class _SuppliersPageState extends State<SuppliersPage> {
-  List<Supplier> suppliers = [
-    Supplier(
-      id: '1',
-      name: 'ASUS Rog',
-      phone: '1234567891',
-      isFavorite: true,
-    ),
-    Supplier(
-      id: '2',
-      name: 'Acer Corporation',
-      phone: '1234567893',
-      isFavorite: true,
-    ),
-    Supplier(
-      id: '3',
-      name: 'Apple Corporation',
-      phone: '1234567892',
-      isFavorite: false,
-    ),
-    Supplier(
-      id: '4',
-      name: 'HP corporation',
-      phone: '1234567890',
-      isFavorite: false,
-    ),
-  ];
+  List<Supplier> suppliers = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadSuppliers();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -97,14 +82,36 @@ class _SuppliersPageState extends State<SuppliersPage> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: suppliers.length,
-        itemBuilder: (context, index) {
-          final supplier = suppliers[index];
-          return _buildSupplierItem(supplier, index);
-        },
-      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : (errorMessage != null)
+              ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _loadSuppliers,
+                        child: const Text('Retry'),
+                      )
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: suppliers.length,
+                  itemBuilder: (context, index) {
+                    final supplier = suppliers[index];
+                    return _buildSupplierItem(supplier, index);
+                  },
+                ),
     );
   }
 
@@ -203,30 +210,56 @@ class _SuppliersPageState extends State<SuppliersPage> {
       MaterialPageRoute(
         builder: (context) => const AddSupplierPage(),
       ),
-    ).then((newSupplierData) {
+    ).then((newSupplierData) async {
       if (newSupplierData != null) {
-        setState(() {
-          suppliers.add(
-            Supplier(
-              id: newSupplierData['id'],
-              name: newSupplierData['name'],
-              phone: newSupplierData['phone'],
-              isFavorite: newSupplierData['isFavorite'] ?? false,
-            ),
-          );
-        });
-        
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Supplier added successfully!'),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.all(Radius.circular(10)),
-            ),
-          ),
-        );
+        await _loadSuppliers();
+        final bool created = (newSupplierData['created'] == true);
+        if (created && mounted) {
+          showSuccessSnackTop(context, 'Supplier added successfully!');
+        }
       }
     });
+  }
+
+  Future<void> _loadSuppliers() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final response = await GetAllSuppliersApi.getAllSuppliers();
+      final List<dynamic> data = (response['data'] as List<dynamic>);
+
+      final List<Supplier> fetched = data.map((item) {
+        final Map<String, dynamic> map = item as Map<String, dynamic>;
+        return Supplier(
+          id: map['_id']?.toString() ?? '',
+          name: map['name']?.toString() ?? '',
+          phone: map['phone']?.toString() ?? '',
+          isFavorite: (map['isFavorite'] as bool?) ?? false,
+        );
+      }).toList();
+
+      setState(() {
+        suppliers = fetched;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = e.toString();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+          ),
+        ),
+      );
+    }
   }
 }

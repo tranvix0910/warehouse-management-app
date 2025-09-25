@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../apis/add_suppliers_api.dart';
+import '../../utils/snack_bar.dart';
 
 class AddSupplierPage extends StatefulWidget {
   const AddSupplierPage({super.key});
@@ -13,6 +15,7 @@ class _AddSupplierPageState extends State<AddSupplierPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+  bool _submitting = false;
 
   @override
   void dispose() {
@@ -108,7 +111,7 @@ class _AddSupplierPageState extends State<AddSupplierPage> {
             child: SizedBox(
               width: double.infinity,
               child: ElevatedButton(
-                onPressed: _createSupplier,
+                onPressed: _submitting ? null : _createSupplier,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF3B82F6),
                   foregroundColor: Colors.white,
@@ -117,13 +120,19 @@ class _AddSupplierPageState extends State<AddSupplierPage> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                child: const Text(
-                  'Create',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+                child: _submitting
+                    ? const SizedBox(
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                      )
+                    : const Text(
+                        'Create',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -186,43 +195,56 @@ class _AddSupplierPageState extends State<AddSupplierPage> {
     );
   }
 
-  void _createSupplier() {
+  Future<void> _createSupplier() async {
     // Validate required fields
-    if (_nameController.text.trim().isEmpty) {
-      _showErrorMessage('Please enter supplier name');
+    final String name = _nameController.text.trim();
+    final String phoneText = _phoneController.text.trim();
+    final String email = _emailController.text.trim();
+    final String address = _addressController.text.trim();
+    final String notes = _notesController.text.trim();
+
+    if (name.isEmpty) {
+      showErrorSnackTop(context, 'Please enter supplier name');
+      return;
+    }
+    if (phoneText.isEmpty) {
+      showErrorSnackTop(context, 'Please enter phone number');
+      return;
+    }
+    int? phoneInt = int.tryParse(phoneText);
+    if (phoneInt == null) {
+      showErrorSnackTop(context, 'Phone must be a number');
       return;
     }
 
-    if (_phoneController.text.trim().isEmpty) {
-      _showErrorMessage('Please enter phone number');
-      return;
+    setState(() { _submitting = true; });
+    try {
+      final res = await AddSupplierApi.addSupplier(
+        name: name,
+        email: email,
+        address: address,
+        notes: notes.isEmpty ? null : notes,
+        phone: phoneInt,
+      );
+
+      final Map<String, dynamic> data = res['data'] as Map<String, dynamic>;
+
+      // Return to previous page and let it display a single success notification
+      Navigator.pop(context, {
+        'created': true,
+        'id': data['_id']?.toString() ?? '',
+        'name': data['name']?.toString() ?? name,
+        'phone': (data['phone']?.toString() ?? phoneText),
+        'isFavorite': (data['isFavorite'] as bool?) ?? false,
+      });
+    } catch (e) {
+      showErrorSnackTop(context, e.toString());
+    } finally {
+      if (mounted) {
+        setState(() { _submitting = false; });
+      }
     }
-
-    // Create supplier data
-    final supplierData = {
-      'id': DateTime.now().millisecondsSinceEpoch.toString(),
-      'name': _nameController.text.trim(),
-      'phone': _phoneController.text.trim(),
-      'email': _emailController.text.trim(),
-      'address': _addressController.text.trim(),
-      'notes': _notesController.text.trim(),
-      'isFavorite': false,
-    };
-
-    // Return to suppliers page with new supplier data
-    Navigator.pop(context, supplierData);
   }
 
-  void _showErrorMessage(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-      ),
-    );
-  }
+  
 }
