@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'add_supplier_page.dart';
 import '../../apis/suppliers_api.dart';
+import '../../apis/add_fav_supplier.dart';
 import '../../utils/snack_bar.dart';
 
 class Supplier {
@@ -196,12 +197,54 @@ class _SuppliersPageState extends State<SuppliersPage> {
     });
   }
 
-  void _toggleFavorite(int index) {
+  void _toggleFavorite(int index) async {
+    final supplier = suppliers[index];
+    final newFavoriteState = !supplier.isFavorite;
+    
+    // Optimistically update UI
     setState(() {
-      suppliers[index] = suppliers[index].copyWith(
-        isFavorite: !suppliers[index].isFavorite,
+      suppliers[index] = supplier.copyWith(
+        isFavorite: newFavoriteState,
       );
     });
+
+    try {
+      // Call API to update favorite status
+      await AddFavoriteSupplierApi.markAsFavorite(
+        supplierId: supplier.id,
+      );
+      
+      // Show success message
+      if (mounted) {
+        showSuccessSnackTop(
+          context, 
+          newFavoriteState 
+            ? 'Supplier added to favorites!' 
+            : 'Supplier removed from favorites!'
+        );
+      }
+    } catch (e) {
+      // Revert UI state on error
+      setState(() {
+        suppliers[index] = supplier.copyWith(
+          isFavorite: !newFavoriteState,
+        );
+      });
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update favorite: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10)),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _addNewSupplier() {

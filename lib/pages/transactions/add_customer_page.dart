@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import 'dart:math';
+import '../../apis/add_customer_api.dart';
+import '../../utils/snack_bar.dart';
 
 class AddCustomerPage extends StatefulWidget {
   const AddCustomerPage({super.key});
@@ -14,6 +15,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _addressController = TextEditingController();
   final TextEditingController _notesController = TextEditingController();
+  bool _submitting = false;
 
   bool get _canCreate =>
       _nameController.text.trim().isNotEmpty && _phoneController.text.trim().isNotEmpty;
@@ -91,7 +93,7 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
             padding: const EdgeInsets.all(16),
             width: double.infinity,
             child: ElevatedButton(
-              onPressed: _canCreate ? _submit : null,
+              onPressed: _canCreate && !_submitting ? _createCustomer : null,
               style: ButtonStyle(
                 backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
                   if (states.contains(MaterialState.disabled)) {
@@ -107,10 +109,16 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
                   RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              child: const Text(
-                'Create',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-              ),
+              child: _submitting
+                  ? const SizedBox(
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                    )
+                  : const Text(
+                      'Create',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                    ),
             ),
           ),
         ],
@@ -156,22 +164,56 @@ class _AddCustomerPageState extends State<AddCustomerPage> {
     );
   }
 
-  void _submit() {
-    final name = _nameController.text.trim();
-    final phone = _phoneController.text.trim();
-    final email = _emailController.text.trim();
-    final address = _addressController.text.trim();
-    final notes = _notesController.text.trim();
-    if (name.isEmpty || phone.isEmpty) return;
+  Future<void> _createCustomer() async {
+    final String name = _nameController.text.trim();
+    final String phoneText = _phoneController.text.trim();
+    final String email = _emailController.text.trim();
+    final String address = _addressController.text.trim();
+    final String notes = _notesController.text.trim();
 
-    Navigator.pop(context, {
-      'id': Random().nextInt(1000000).toString(),
-      'name': name,
-      'phone': phone,
-      'email': email,
-      'address': address,
-      'notes': notes,
-    });
+    if (name.isEmpty) {
+      showErrorSnackTop(context, 'Please enter customer name');
+      return;
+    }
+    if (phoneText.isEmpty) {
+      showErrorSnackTop(context, 'Please enter phone number');
+      return;
+    }
+    int? phoneInt = int.tryParse(phoneText);
+    if (phoneInt == null) {
+      showErrorSnackTop(context, 'Phone must be a number');
+      return;
+    }
+
+    setState(() { _submitting = true; });
+    try {
+      final res = await AddCustomerApi.addCustomer(
+        name: name,
+        email: email,
+        address: address,
+        notes: notes.isEmpty ? null : notes,
+        phone: phoneInt,
+      );
+
+      final Map<String, dynamic> data = res['data'] as Map<String, dynamic>;
+
+      // Show success notification before navigating back
+      showSuccessSnackTop(context, 'Customer added successfully!');
+
+      Navigator.pop(context, {
+        'created': true,
+        'id': data['_id']?.toString() ?? '',
+        'name': data['name']?.toString() ?? name,
+        'phone': (data['phone']?.toString() ?? phoneText),
+        'isFavorite': (data['isFavorite'] as bool?) ?? false,
+      });
+    } catch (e) {
+      showErrorSnackTop(context, e.toString());
+    } finally {
+      if (mounted) {
+        setState(() { _submitting = false; });
+      }
+    }
   }
 
   @override
