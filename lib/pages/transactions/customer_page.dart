@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'add_customer_page.dart';
+import '../../apis/customer_api.dart';
+import '../../apis/add_fav_customer.dart';
+import '../../utils/snack_bar.dart';
 
 class CustomerModel {
   final String id;
@@ -37,11 +40,15 @@ class CustomersPage extends StatefulWidget {
 }
 
 class _CustomersPageState extends State<CustomersPage> {
-  List<CustomerModel> customers = [
-    CustomerModel(id: '1', name: 'Michael Zhang', phone: '+61255541234', isFavorite: true),
-    CustomerModel(id: '2', name: 'Sarah Williams', phone: '+442055567890', isFavorite: true),
-    CustomerModel(id: '3', name: 'John Carter', phone: '+12125553456', isFavorite: false),
-  ];
+  List<CustomerModel> customers = [];
+  bool isLoading = true;
+  String? errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCustomers();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -76,14 +83,36 @@ class _CustomersPageState extends State<CustomersPage> {
           ),
         ],
       ),
-      body: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: customers.length,
-        itemBuilder: (context, index) {
-          final customer = customers[index];
-          return _buildCustomerItem(customer, index);
-        },
-      ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : (errorMessage != null)
+              ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _loadCustomers,
+                        child: const Text('Retry'),
+                      )
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: customers.length,
+                  itemBuilder: (context, index) {
+                    final customer = customers[index];
+                    return _buildCustomerItem(customer, index);
+                  },
+                ),
     );
   }
 
@@ -168,12 +197,54 @@ class _CustomersPageState extends State<CustomersPage> {
     });
   }
 
-  void _toggleFavorite(int index) {
+  void _toggleFavorite(int index) async {
+    final customer = customers[index];
+    final newFavoriteState = !customer.isFavorite;
+    
+    // Optimistically update UI
     setState(() {
-      customers[index] = customers[index].copyWith(
-        isFavorite: !customers[index].isFavorite,
+      customers[index] = customer.copyWith(
+        isFavorite: newFavoriteState,
       );
     });
+
+    try {
+      // Call API to update favorite status
+      await AddFavoriteCustomerApi.markAsFavorite(
+        customerId: customer.id,
+      );
+      
+      // Show success message
+      if (mounted) {
+        showSuccessSnackTop(
+          context, 
+          newFavoriteState 
+            ? 'Customer added to favorites!' 
+            : 'Customer removed from favorites!'
+        );
+      }
+    } catch (e) {
+      // Revert UI state on error
+      setState(() {
+        customers[index] = customer.copyWith(
+          isFavorite: !newFavoriteState,
+        );
+      });
+      
+      // Show error message
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to update favorite: ${e.toString()}'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10)),
+            ),
+          ),
+        );
+      }
+    }
   }
 
   void _addNewCustomer() {
@@ -196,5 +267,47 @@ class _CustomersPageState extends State<CustomersPage> {
         });
       }
     });
+  }
+
+  Future<void> _loadCustomers() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      final response = await GetAllCustomersApi.getAllCustomers();
+      final List<dynamic> data = response['data'] as List<dynamic>;
+
+      final List<CustomerModel> fetched = data.map((item) {
+        final Map<String, dynamic> map = item as Map<String, dynamic>;
+        return CustomerModel(
+          id: map['_id']?.toString() ?? '',
+          name: map['name']?.toString() ?? '',
+          phone: map['phone']?.toString() ?? '',
+          isFavorite: (map['isFavorite'] as bool?) ?? false,
+        );
+      }).toList();
+
+      setState(() {
+        customers = fetched;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = e.toString();
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+          behavior: SnackBarBehavior.floating,
+          shape: const RoundedRectangleBorder(
+            borderRadius: BorderRadius.all(Radius.circular(10)),
+          ),
+        ),
+      );
+    }
   }
 }
