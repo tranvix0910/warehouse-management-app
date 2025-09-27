@@ -70,7 +70,6 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
           color: '',
           processor: '',
         );
-        
         selectedItems.add(SelectedItem(
           product: product,
           quantity: item['quantity'] ?? 1,
@@ -229,11 +228,14 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
                   onPressed: isValid
                       ? () {
                           final qty = int.tryParse(controller.text) ?? 0;
-                          if (!_isItemSelected(product.id) && qty > 0) {
-                            selectedItems.add(SelectedItem(product: product, quantity: qty));
-                          } else {
-                            _updateItemQuantity(product.id, qty);
-                          }
+                          // Update outer state immediately so UI and Done button refresh
+                          this.setState(() {
+                            if (!_isItemSelected(product.id) && qty > 0) {
+                              selectedItems.add(SelectedItem(product: product, quantity: qty));
+                            } else {
+                              _updateItemQuantity(product.id, qty);
+                            }
+                          });
                           Navigator.pop(context);
                         }
                       : null,
@@ -266,19 +268,8 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        actions: [
-          TextButton(
-            onPressed: _doneSelection,
-            child: const Text(
-              'Done',
-              style: TextStyle(
-                color: Color(0xFF3B82F6),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-        ],
+        // Remove top Done button; we'll use a bottom bar action instead
+        actions: const [],
       ),
       body: Column(
         children: [
@@ -317,45 +308,56 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
             child: _buildBody(),
           ),
           
-          // Selected Items Counter
-          if (selectedItems.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: const BoxDecoration(
-                color: Color(0xFF1E293B),
-                border: Border(
-                  top: BorderSide(color: Color(0xFF334155), width: 1),
-                ),
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text(
-                    '${selectedItems.length} items selected',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Text(
-                      selectedItems.length.toString(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                ],
+          // Bottom action bar with total quantity and Done button
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: const BoxDecoration(
+              color: Color(0xFF1E293B),
+              border: Border(
+                top: BorderSide(color: Color(0xFF334155), width: 1),
               ),
             ),
+            child: Row(
+              children: [
+                // Total selected quantity on the left
+                Text(
+                  _totalSelectedQuantity().toString(),
+                  style: const TextStyle(
+                    color: Color(0xFF3B82F6),
+                    fontSize: 22,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const Spacer(),
+                // Done button
+                ElevatedButton(
+                  onPressed: selectedItems.isNotEmpty ? _doneSelection : null,
+                  style: ButtonStyle(
+                    backgroundColor: MaterialStateProperty.resolveWith<Color>((states) {
+                      if (states.contains(MaterialState.disabled)) {
+                        return const Color(0xFF334155); // gray when disabled
+                      }
+                      return const Color(0xFF3B82F6); // blue when enabled
+                    }),
+                    foregroundColor: MaterialStateProperty.all<Color>(Colors.white),
+                    padding: MaterialStateProperty.all<EdgeInsets>(
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    ),
+                    shape: MaterialStateProperty.all<RoundedRectangleBorder>(
+                      RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                  child: const Text(
+                    'Done',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -554,13 +556,24 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
                             fontSize: 14,
                           ),
                         ),
+                        if (isSelected) ...[
+                          const SizedBox(height: 6),
+                          Text(
+                            'Quantity: ${_getSelectedQuantity(product.id)}',
+                            style: const TextStyle(
+                              color: Color(0xFF3B82F6),
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ],
                     ),
                   ),
                   
                   // Stock & Selection
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -575,6 +588,17 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
                             fontSize: 12,
                             fontWeight: FontWeight.bold,
                           ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      // Immediate visual checkmark when selected
+                      AnimatedOpacity(
+                        opacity: isSelected ? 1.0 : 0.0,
+                        duration: const Duration(milliseconds: 120),
+                        child: const Icon(
+                          Icons.check,
+                          color: Color(0xFF3B82F6),
+                          size: 20,
                         ),
                       ),
                     ],
@@ -598,6 +622,14 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
     } else {
       return const Color(0xFFFF6B6B); // Red for very low stock
     }
+  }
+
+  int _totalSelectedQuantity() {
+    int total = 0;
+    for (final item in selectedItems) {
+      total += item.quantity;
+    }
+    return total;
   }
 
   void _doneSelection() {
