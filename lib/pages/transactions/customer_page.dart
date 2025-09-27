@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
-import 'add_supplier_page.dart';
-import '../../apis/suppliers_api.dart';
-import '../../apis/add_fav_supplier.dart';
+import 'add_customer_page.dart';
+import '../../apis/customer_api.dart';
+import '../../apis/add_fav_customer.dart';
 import '../../utils/snack_bar.dart';
 
-class Supplier {
+class CustomerModel {
   final String id;
   final String name;
   final String phone;
   final bool isFavorite;
 
-  Supplier({
+  CustomerModel({
     required this.id,
     required this.name,
     required this.phone,
     this.isFavorite = false,
   });
 
-  Supplier copyWith({
+  CustomerModel copyWith({
     String? id,
     String? name,
     String? phone,
     bool? isFavorite,
   }) {
-    return Supplier(
+    return CustomerModel(
       id: id ?? this.id,
       name: name ?? this.name,
       phone: phone ?? this.phone,
@@ -32,22 +32,22 @@ class Supplier {
   }
 }
 
-class SuppliersPage extends StatefulWidget {
-  const SuppliersPage({super.key});
+class CustomersPage extends StatefulWidget {
+  const CustomersPage({super.key});
 
   @override
-  State<SuppliersPage> createState() => _SuppliersPageState();
+  State<CustomersPage> createState() => _CustomersPageState();
 }
 
-class _SuppliersPageState extends State<SuppliersPage> {
-  List<Supplier> suppliers = [];
+class _CustomersPageState extends State<CustomersPage> {
+  List<CustomerModel> customers = [];
   bool isLoading = true;
   String? errorMessage;
 
   @override
   void initState() {
     super.initState();
-    _loadSuppliers();
+    _loadCustomers();
   }
 
   @override
@@ -62,7 +62,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
           onPressed: () => Navigator.pop(context),
         ),
         title: const Text(
-          'Suppliers',
+          'Customers',
           style: TextStyle(
             color: Colors.white,
             fontSize: 20,
@@ -71,7 +71,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
         ),
         actions: [
           TextButton(
-            onPressed: _addNewSupplier,
+            onPressed: _addNewCustomer,
             child: const Text(
               'Add new',
               style: TextStyle(
@@ -99,7 +99,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
                       ),
                       const SizedBox(height: 12),
                       ElevatedButton(
-                        onPressed: _loadSuppliers,
+                        onPressed: _loadCustomers,
                         child: const Text('Retry'),
                       )
                     ],
@@ -107,20 +107,20 @@ class _SuppliersPageState extends State<SuppliersPage> {
                 )
               : ListView.builder(
                   padding: const EdgeInsets.all(16),
-                  itemCount: suppliers.length,
+                  itemCount: customers.length,
                   itemBuilder: (context, index) {
-                    final supplier = suppliers[index];
-                    return _buildSupplierItem(supplier, index);
+                    final customer = customers[index];
+                    return _buildCustomerItem(customer, index);
                   },
                 ),
     );
   }
 
-  Widget _buildSupplierItem(Supplier supplier, int index) {
+  Widget _buildCustomerItem(CustomerModel customer, int index) {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       child: InkWell(
-        onTap: () => _selectSupplier(supplier),
+        onTap: () => _selectCustomer(customer),
         borderRadius: BorderRadius.circular(12),
         child: Container(
           padding: const EdgeInsets.all(16),
@@ -134,13 +134,13 @@ class _SuppliersPageState extends State<SuppliersPage> {
           ),
           child: Row(
             children: [
-              // Supplier Info
+              // Customer Info
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      supplier.name,
+                      customer.name,
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -149,7 +149,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      supplier.phone,
+                      customer.phone,
                       style: const TextStyle(
                         color: Color(0xFF3B82F6),
                         fontSize: 14,
@@ -158,24 +158,24 @@ class _SuppliersPageState extends State<SuppliersPage> {
                   ],
                 ),
               ),
-              
+
               // Favorite Icon
               GestureDetector(
                 onTap: () => _toggleFavorite(index),
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   child: Icon(
-                    supplier.isFavorite ? Icons.star : Icons.star_border,
-                    color: supplier.isFavorite 
+                    customer.isFavorite ? Icons.star : Icons.star_border,
+                    color: customer.isFavorite 
                         ? Colors.amber 
                         : Colors.grey[600],
                     size: 24,
                   ),
                 ),
               ),
-              
+
               const SizedBox(width: 8),
-              
+
               // Arrow Icon
               Icon(
                 Icons.arrow_forward_ios,
@@ -189,29 +189,29 @@ class _SuppliersPageState extends State<SuppliersPage> {
     );
   }
 
-  void _selectSupplier(Supplier supplier) {
+  void _selectCustomer(CustomerModel customer) {
     Navigator.pop(context, {
-      'id': supplier.id,
-      'name': supplier.name,
-      'phone': supplier.phone,
+      'id': customer.id,
+      'name': customer.name,
+      'phone': customer.phone,
     });
   }
 
   void _toggleFavorite(int index) async {
-    final supplier = suppliers[index];
-    final newFavoriteState = !supplier.isFavorite;
+    final customer = customers[index];
+    final newFavoriteState = !customer.isFavorite;
     
     // Optimistically update UI
     setState(() {
-      suppliers[index] = supplier.copyWith(
+      customers[index] = customer.copyWith(
         isFavorite: newFavoriteState,
       );
     });
 
     try {
       // Call API to update favorite status
-      await AddFavoriteSupplierApi.markAsFavorite(
-        supplierId: supplier.id,
+      await AddFavoriteCustomerApi.markAsFavorite(
+        customerId: customer.id,
       );
       
       // Show success message
@@ -219,14 +219,14 @@ class _SuppliersPageState extends State<SuppliersPage> {
         showSuccessSnackTop(
           context, 
           newFavoriteState 
-            ? 'Supplier added to favorites!' 
-            : 'Supplier removed from favorites!'
+            ? 'Customer added to favorites!' 
+            : 'Customer removed from favorites!'
         );
       }
     } catch (e) {
       // Revert UI state on error
       setState(() {
-        suppliers[index] = supplier.copyWith(
+        customers[index] = customer.copyWith(
           isFavorite: !newFavoriteState,
         );
       });
@@ -247,36 +247,41 @@ class _SuppliersPageState extends State<SuppliersPage> {
     }
   }
 
-  void _addNewSupplier() {
+  void _addNewCustomer() {
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => const AddSupplierPage(),
+        builder: (context) => const AddCustomerPage(),
       ),
-    ).then((newSupplierData) async {
-      if (newSupplierData != null) {
-        await _loadSuppliers();
-        final bool created = (newSupplierData['created'] == true);
-        if (created && mounted) {
-          showSuccessSnackTop(context, 'Supplier added successfully!');
-        }
+    ).then((newCustomerData) {
+      if (newCustomerData != null) {
+        setState(() {
+          customers.add(
+            CustomerModel(
+              id: newCustomerData['id'],
+              name: newCustomerData['name'],
+              phone: newCustomerData['phone'],
+              isFavorite: newCustomerData['isFavorite'] ?? false,
+            ),
+          );
+        });
       }
     });
   }
 
-  Future<void> _loadSuppliers() async {
+  Future<void> _loadCustomers() async {
     setState(() {
       isLoading = true;
       errorMessage = null;
     });
 
     try {
-      final response = await GetAllSuppliersApi.getAllSuppliers();
-      final List<dynamic> data = (response['data'] as List<dynamic>);
+      final response = await GetAllCustomersApi.getAllCustomers();
+      final List<dynamic> data = response['data'] as List<dynamic>;
 
-      final List<Supplier> fetched = data.map((item) {
+      final List<CustomerModel> fetched = data.map((item) {
         final Map<String, dynamic> map = item as Map<String, dynamic>;
-        return Supplier(
+        return CustomerModel(
           id: map['_id']?.toString() ?? '',
           name: map['name']?.toString() ?? '',
           phone: map['phone']?.toString() ?? '',
@@ -285,7 +290,7 @@ class _SuppliersPageState extends State<SuppliersPage> {
       }).toList();
 
       setState(() {
-        suppliers = fetched;
+        customers = fetched;
         isLoading = false;
       });
     } catch (e) {

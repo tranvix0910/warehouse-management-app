@@ -36,12 +36,11 @@ class MyApp extends StatelessWidget {
         '/signin': (context) => const SignInPage(),
         '/signup': (context) => const SignUpPage(),
         '/otp': (context) {
-          final args =
-              ModalRoute.of(context)!.settings.arguments
-                  as Map<String, dynamic>;
+          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
           return OtpPage(email: args['email'], username: args['username']);
         }
       },
     );
   }
 }
+  

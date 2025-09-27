@@ -1,19 +1,49 @@
 import 'package:flutter/material.dart';
+import '../../apis/summary_report_api.dart';
+import '../../apis/old_stock_api.dart';
+import '../../apis/out_stock_api.dart';
+import '../../apis/low_stack_api.dart';
+import '../../utils/snack_bar.dart';
 
 class ReportItem {
+  final String id;
   final String name;
   final String sku;
   final int stock;
-  final int daysInStock;
+  final int? daysInStock;
   final String status;
+  final String? image;
+  final String category;
+  final String cost;
+  final String price;
 
   ReportItem({
+    required this.id,
     required this.name,
     required this.sku,
     required this.stock,
-    required this.daysInStock,
+    this.daysInStock,
     required this.status,
+    this.image,
+    required this.category,
+    required this.cost,
+    required this.price,
   });
+
+  factory ReportItem.fromApi(Map<String, dynamic> data, String status) {
+    return ReportItem(
+      id: data['_id']?.toString() ?? '',
+      name: data['productName']?.toString() ?? '',
+      sku: data['SKU']?.toString() ?? '',
+      stock: (data['quantity'] as int?) ?? 0,
+      daysInStock: data['daysSinceLastStockIn'] as int?,
+      status: status,
+      image: data['image']?.toString(),
+      category: data['category']?.toString() ?? '',
+      cost: data['cost']?.toString() ?? '0',
+      price: data['price']?.toString() ?? '0',
+    );
+  }
 }
 
 class ReportPage extends StatefulWidget {
@@ -25,23 +55,25 @@ class ReportPage extends StatefulWidget {
 
 class _ReportPageState extends State<ReportPage> {
   int selectedTabIndex = 0;
+  bool isLoading = true;
+  String? errorMessage;
   
-  final List<ReportItem> oldStockItems = [
-    ReportItem(name: 'Microsoft Surface 4', sku: 'UEPYMGDO', stock: 80, daysInStock: 15, status: 'old'),
-    ReportItem(name: 'Lenovo ThinkPad', sku: 'NNEUUUKXCL', stock: 50, daysInStock: 12, status: 'old'),
-    ReportItem(name: 'Apple MacBook Pro 14', sku: 'SMXAPGAID', stock: 45, daysInStock: 9, status: 'old'),
-  ];
+  // Summary data
+  int lowStockCount = 0;
+  int oldStockCount = 0;
+  int outOfStockCount = 0;
+  int totalProductCount = 0;
+  
+  // Report items
+  List<ReportItem> oldStockItems = [];
+  List<ReportItem> outOfStockItems = [];
+  List<ReportItem> lowStockItems = [];
 
-  final List<ReportItem> outOfStockItems = [
-    ReportItem(name: 'Samsung Galaxy Tab', sku: 'SGTTAB001', stock: 0, daysInStock: 0, status: 'out'),
-    ReportItem(name: 'iPad Pro 12.9', sku: 'IPADPRO12', stock: 0, daysInStock: 0, status: 'out'),
-  ];
-
-  final List<ReportItem> lowStockItems = [
-    ReportItem(name: 'Hp monoblock 12', sku: 'IQHPVMSD', stock: 15, daysInStock: 5, status: 'low'),
-    ReportItem(name: 'Dell XPS 13', sku: 'DELLXPS13', stock: 8, daysInStock: 3, status: 'low'),
-    ReportItem(name: 'Asus VivoBook', sku: 'ASUSVIVO1', stock: 12, daysInStock: 2, status: 'low'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -80,114 +112,136 @@ class _ReportPageState extends State<ReportPage> {
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Dashboard Overview Cards
-            const Text(
-              'Analytics Dashboard',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            
-            // Overview Cards
-            Row(
-              children: [
-                Expanded(
-                  child: _buildOverviewCard(
-                    title: 'Old Stock',
-                    count: oldStockItems.length.toString(),
-                    subtitle: '>7 days',
-                    color: const Color(0xFFFF8C00),
-                    icon: Icons.inventory,
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : (errorMessage != null)
+              ? Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      Text(
+                        errorMessage!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.white70),
+                      ),
+                      const SizedBox(height: 12),
+                      ElevatedButton(
+                        onPressed: _loadData,
+                        child: const Text('Retry'),
+                      )
+                    ],
+                  ),
+                )
+              : SingleChildScrollView(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Dashboard Overview Cards
+                      const Text(
+                        'Analytics Dashboard',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                      
+                      // Overview Cards
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildOverviewCard(
+                              title: 'Old Stock',
+                              count: oldStockCount.toString(),
+                              subtitle: '>7 days',
+                              color: const Color(0xFFFF8C00),
+                              icon: Icons.inventory,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildOverviewCard(
+                              title: 'Out of Stock',
+                              count: outOfStockCount.toString(),
+                              subtitle: 'Need restock',
+                              color: const Color(0xFFFF6B6B),
+                              icon: Icons.warning,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      
+                      Row(
+                        children: [
+                          Expanded(
+                            child: _buildOverviewCard(
+                              title: 'Low Stock',
+                              count: lowStockCount.toString(),
+                              subtitle: 'Low quantity',
+                              color: const Color(0xFFFFD93D),
+                              icon: Icons.trending_down,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildOverviewCard(
+                              title: 'Total Items',
+                              count: totalProductCount.toString(),
+                              subtitle: 'Need attention',
+                              color: const Color(0xFF3B82F6),
+                              icon: Icons.analytics,
+                            ),
+                          ),
+                        ],
+                      ),
+                      
+                      const SizedBox(height: 24),
+                      
+                      // Tab Navigation
+                      Container(
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: _buildTabButton(
+                                title: 'Old Stock',
+                                index: 0,
+                                isSelected: selectedTabIndex == 0,
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildTabButton(
+                                title: 'Out of Stock',
+                                index: 1,
+                                isSelected: selectedTabIndex == 1,
+                              ),
+                            ),
+                            Expanded(
+                              child: _buildTabButton(
+                                title: 'Low Stock',
+                                index: 2,
+                                isSelected: selectedTabIndex == 2,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      // Content based on selected tab
+                      _buildTabContent(),
+                    ],
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildOverviewCard(
-                    title: 'Out of Stock',
-                    count: outOfStockItems.length.toString(),
-                    subtitle: 'Need restock',
-                    color: const Color(0xFFFF6B6B),
-                    icon: Icons.warning,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            
-            Row(
-              children: [
-                Expanded(
-                  child: _buildOverviewCard(
-                    title: 'Low Stock',
-                    count: lowStockItems.length.toString(),
-                    subtitle: 'Low quantity',
-                    color: const Color(0xFFFFD93D),
-                    icon: Icons.trending_down,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildOverviewCard(
-                    title: 'Total Items',
-                    count: '${oldStockItems.length + outOfStockItems.length + lowStockItems.length}',
-                    subtitle: 'Need attention',
-                    color: const Color(0xFF3B82F6),
-                    icon: Icons.analytics,
-                  ),
-                ),
-              ],
-            ),
-            
-            const SizedBox(height: 24),
-            
-            // Tab Navigation
-            Container(
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: _buildTabButton(
-                      title: 'Old Stock',
-                      index: 0,
-                      isSelected: selectedTabIndex == 0,
-                    ),
-                  ),
-                  Expanded(
-                    child: _buildTabButton(
-                      title: 'Out of Stock',
-                      index: 1,
-                      isSelected: selectedTabIndex == 1,
-                    ),
-                  ),
-                  Expanded(
-                    child: _buildTabButton(
-                      title: 'Low Stock',
-                      index: 2,
-                      isSelected: selectedTabIndex == 2,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            // Content based on selected tab
-            _buildTabContent(),
-          ],
-        ),
-      ),
     );
   }
 
@@ -485,5 +539,54 @@ class _ReportPageState extends State<ReportPage> {
         ],
       ),
     );
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      isLoading = true;
+      errorMessage = null;
+    });
+
+    try {
+      // Load summary data
+      final summaryResponse = await SummaryReportApi.getSummaryReport();
+      final summaryData = summaryResponse['data'] as Map<String, dynamic>;
+      
+      // Load individual reports
+      final oldStockResponse = await SummaryOldStockApi.getOldStockReport();
+      final outStockResponse = await SummaryOutStockApi.getOutOfStockReport();
+      final lowStockResponse = await LowStockApi.getLowStockReport();
+
+      final List<dynamic> oldStockData = oldStockResponse['data'] as List<dynamic>;
+      final List<dynamic> outStockData = outStockResponse['data'] as List<dynamic>;
+      final List<dynamic> lowStockData = lowStockResponse['data'] as List<dynamic>;
+
+      setState(() {
+        // Update summary counts
+        lowStockCount = summaryData['lowStock'] as int? ?? 0;
+        oldStockCount = summaryData['oldStock'] as int? ?? 0;
+        outOfStockCount = summaryData['outOfStock'] as int? ?? 0;
+        totalProductCount = summaryData['totalProduct'] as int? ?? 0;
+
+        // Update report items
+        oldStockItems = oldStockData.map((item) => 
+          ReportItem.fromApi(item as Map<String, dynamic>, 'old')).toList();
+        outOfStockItems = outStockData.map((item) => 
+          ReportItem.fromApi(item as Map<String, dynamic>, 'out')).toList();
+        lowStockItems = lowStockData.map((item) => 
+          ReportItem.fromApi(item as Map<String, dynamic>, 'low')).toList();
+
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        isLoading = false;
+        errorMessage = e.toString();
+      });
+      
+      if (mounted) {
+        showErrorSnackTop(context, 'Failed to load reports: ${e.toString()}');
+      }
+    }
   }
 }

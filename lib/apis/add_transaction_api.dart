@@ -86,7 +86,7 @@ class AddTransactionApi {
         ),
       );
 
-      if (response.statusCode == 200 && response.data['success'] == true) {
+      if ((response.statusCode == 200 || response.statusCode == 201) && response.data['success'] == true) {
         return response.data;
       }
       throw Exception(response.data['message'] ?? 'Failed to create transaction');
