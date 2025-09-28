@@ -157,7 +157,7 @@ class _ReportPageState extends State<ReportPage> {
                             child: _buildOverviewCard(
                               title: 'Old Stock',
                               count: oldStockCount.toString(),
-                              subtitle: '>7 days',
+                              subtitle: '>30 days',
                               color: const Color(0xFFFF8C00),
                               icon: Icons.inventory,
                             ),
@@ -381,7 +381,9 @@ class _ReportPageState extends State<ReportPage> {
     switch (item.status) {
       case 'old':
         statusColor = const Color(0xFFFF8C00);
-        statusText = '${item.daysInStock} days';
+        statusText = item.daysInStock != null 
+            ? '${item.daysInStock} days' 
+            : 'No stock history';
         break;
       case 'out':
         statusColor = const Color(0xFFFF6B6B);
