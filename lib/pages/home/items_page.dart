@@ -51,6 +51,24 @@ class ItemModel {
       processor: json['processor'] ?? '',
     );
   }
+
+  ProductModel toProductModel() {
+    return ProductModel(
+      id: id,
+      name: name,
+      sku: sku,
+      cost: cost.replaceAll(' USD', ''),
+      price: price.replaceAll(' USD', ''),
+      quantity: stock,
+      image: image,
+      category: category,
+      ram: ram,
+      date: date,
+      gpu: gpu,
+      color: color,
+      processor: processor,
+    );
+  }
 }
 
 class ItemsPage extends StatefulWidget {
@@ -417,21 +435,18 @@ class _ItemsPageState extends State<ItemsPage> {
         itemBuilder: (context, index) {
           final item = filteredItems[index];
           return GestureDetector(
-            onTap: () {
-              Navigator.push(
+            onTap: () async {
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ItemDetailsPage(
-                    item: {
-                      'name': item.name,
-                      'sku': item.sku,
-                      'cost': item.cost,
-                      'price': item.price,
-                      'stock': item.stock.toString(),
-                    },
-                  ),
+                  builder: (context) => ItemDetailsPage(product: item.toProductModel()),
                 ),
               );
+              
+              // Refresh list if product was updated
+              if (result == true) {
+                _loadProducts();
+              }
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
