@@ -20,16 +20,19 @@ class SelectedItem {
       'image': product.image,
       'price': product.price,
       'cost': product.cost,
+      'availableStock': product.quantity, // Add available stock
     };
   }
 }
 
 class ItemsSelectionPage extends StatefulWidget {
   final List<Map<String, dynamic>>? preSelectedItems;
+  final bool isStockOut; // true for Stock Out, false for Stock In
   
   const ItemsSelectionPage({
     super.key,
     this.preSelectedItems,
+    this.isStockOut = false,
   });
 
   @override
@@ -173,11 +176,26 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
   }
 
   void _showQuantityDialog(ProductModel product) {
+    // For Stock Out, prevent selecting out-of-stock items
+    if (widget.isStockOut && product.quantity == 0) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('${product.name} is out of stock'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+    
     final currentQuantity = _getSelectedQuantity(product.id);
     final TextEditingController controller = TextEditingController(
       text: currentQuantity > 0 ? currentQuantity.toString() : '',
     );
-    bool isValid = currentQuantity > 0;
+    
+    // Initialize isValid based on current quantity and mode
+    bool isValid = widget.isStockOut 
+        ? (currentQuantity > 0 && currentQuantity <= product.quantity)
+        : (currentQuantity > 0);
 
     showDialog(
       context: context,
@@ -187,7 +205,13 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
             void onChanged(String value) {
               final intVal = int.tryParse(value) ?? 0;
               setState(() {
-                isValid = intVal > 0 && intVal <= product.quantity;
+                // For Stock In: only check if > 0
+                // For Stock Out: check if > 0 AND <= available stock
+                if (widget.isStockOut) {
+                  isValid = intVal > 0 && intVal <= product.quantity;
+                } else {
+                  isValid = intVal > 0;
+                }
               });
             }
 
@@ -197,27 +221,111 @@ class _ItemsSelectionPageState extends State<ItemsSelectionPage> {
                 borderRadius: BorderRadius.circular(12),
                 side: const BorderSide(color: Color(0xFF334155), width: 1),
               ),
-              title: const Text(
-                'Enter the quantity',
-                style: TextStyle(color: Colors.white),
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Enter the quantity',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  if (widget.isStockOut) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: product.quantity > 0 
+                            ? const Color(0xFF10B981).withOpacity(0.1)
+                            : const Color(0xFFEF4444).withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: product.quantity > 0 
+                              ? const Color(0xFF10B981)
+                              : const Color(0xFFEF4444),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            product.quantity > 0 
+                                ? Icons.check_circle_outline
+                                : Icons.warning_amber_rounded,
+                            color: product.quantity > 0 
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFFEF4444),
+                            size: 18,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Available: ${product.quantity}',
+                            style: TextStyle(
+                              color: product.quantity > 0 
+                                  ? const Color(0xFF10B981)
+                                  : const Color(0xFFEF4444),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ],
               ),
-              content: TextField(
-                controller: controller,
-                autofocus: true,
-                keyboardType: TextInputType.number,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: onChanged,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  hintText: 'Quantity',
-                  hintStyle: TextStyle(color: Colors.grey),
-                  enabledBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF334155)),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: controller,
+                    autofocus: true,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                    onChanged: onChanged,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Quantity',
+                      hintStyle: const TextStyle(color: Colors.grey),
+                      enabledBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF334155)),
+                      ),
+                      focusedBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Color(0xFF3B82F6)),
+                      ),
+                      errorBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      focusedErrorBorder: const UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.red),
+                      ),
+                      errorText: !isValid && controller.text.isNotEmpty
+                          ? (widget.isStockOut 
+                              ? '⚠️ Cannot exceed ${product.quantity} units'
+                              : '⚠️ Must be greater than 0')
+                          : null,
+                      errorStyle: const TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
                   ),
-                  focusedBorder: UnderlineInputBorder(
-                    borderSide: BorderSide(color: Color(0xFF3B82F6)),
-                  ),
-                ),
+                  if (!widget.isStockOut) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Current stock: ${product.quantity}',
+                      style: TextStyle(
+                        color: Colors.grey[400],
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ],
               ),
               actions: [
                 TextButton(
