@@ -38,12 +38,12 @@ class _EditTransactionPageState extends State<EditTransactionPage> {
     
     // Convert transaction items to the format used by items selection page
     selectedItems = widget.transaction.items.map((item) => {
-      'id': item.product.id,
-      'name': item.product.productName,
-      'sku': item.product.sku,
-      'cost': item.product.cost,
-      'price': item.product.price,
-      'image': item.product.image,
+      'id': item.product?.id,
+      'name': item.product?.productName,
+      'sku': item.product?.sku,
+      'cost': item.product?.cost,
+      'price': item.product?.price,
+      'image': item.product?.image,
       'quantity': item.quantity,
       'selectedQuantity': item.quantity,
     }).toList();

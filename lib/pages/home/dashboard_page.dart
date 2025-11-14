@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../../core/firebase_db_service.dart.dart';
 import '../../utils/token_storage.dart';
 import '../../apis/product_api.dart';
+import '../../services/product_service.dart';
 import '../items/add_item_page.dart';
 import '../items/details_page.dart';
 
@@ -53,6 +54,24 @@ class ItemModel {
       processor: json['processor'] ?? '',
     );
   }
+
+  ProductModel toProductModel() {
+    return ProductModel(
+      id: id,
+      name: name,
+      sku: sku,
+      cost: cost.replaceAll(' USD', ''),
+      price: price.replaceAll(' USD', ''),
+      quantity: stock,
+      image: image,
+      category: category,
+      ram: ram,
+      date: date,
+      gpu: gpu,
+      color: color,
+      processor: processor,
+    );
+  }
 }
 
 class DashboardPage extends StatefulWidget {
@@ -82,7 +101,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
       final response = await GetAllProductsApi.getAllProducts();
       final List<dynamic> productsData = response['data'] ?? [];
-      
+
       setState(() {
         // Chỉ lấy 5 sản phẩm đầu tiên
         items = productsData
@@ -355,11 +374,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 // Chuyển trực tiếp đến trang Add Item
                 final result = await Navigator.push(
                   context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddItemPage(),
-                  ),
+                  MaterialPageRoute(builder: (context) => const AddItemPage()),
                 );
-                
+
                 // Nếu có sản phẩm được thêm, refresh danh sách
                 if (result == true) {
                   _loadProducts();
@@ -387,9 +404,7 @@ class _DashboardPageState extends State<DashboardPage> {
       return const Center(
         child: Padding(
           padding: EdgeInsets.all(20),
-          child: CircularProgressIndicator(
-            color: Color(0xFF3B82F6),
-          ),
+          child: CircularProgressIndicator(color: Color(0xFF3B82F6)),
         ),
       );
     }
@@ -398,11 +413,7 @@ class _DashboardPageState extends State<DashboardPage> {
       return Center(
         child: Column(
           children: [
-            const Icon(
-              Icons.error_outline,
-              color: Color(0xFFEF4444),
-              size: 48,
-            ),
+            const Icon(Icons.error_outline, color: Color(0xFFEF4444), size: 48),
             const SizedBox(height: 16),
             Text(
               'Error loading products',
@@ -415,10 +426,7 @@ class _DashboardPageState extends State<DashboardPage> {
             const SizedBox(height: 8),
             Text(
               errorMessage!,
-              style: const TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 14,
-              ),
+              style: const TextStyle(color: Color(0xFF64748B), fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -456,21 +464,14 @@ class _DashboardPageState extends State<DashboardPage> {
             SizedBox(height: 8),
             Text(
               'Add some products to get started',
-              style: TextStyle(
-                color: Color(0xFF64748B),
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Color(0xFF64748B), fontSize: 14),
             ),
           ],
         ),
       );
     }
 
-    return Column(
-      children: items
-          .map((item) => _buildItemCard(item))
-          .toList(),
-    );
+    return Column(children: items.map((item) => _buildItemCard(item)).toList());
   }
 
   Widget _buildItemCard(ItemModel item) {
@@ -480,15 +481,8 @@ class _DashboardPageState extends State<DashboardPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => ItemDetailsPage(
-              item: {
-                'name': item.name,
-                'sku': item.sku,
-                'cost': item.cost,
-                'price': item.price,
-                'stock': item.stock.toString(),
-              },
-            ),
+            builder: (context) =>
+                ItemDetailsPage(product: item.toProductModel()),
           ),
         );
       },
@@ -498,10 +492,7 @@ class _DashboardPageState extends State<DashboardPage> {
         decoration: BoxDecoration(
           color: const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF334155),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0xFF334155), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
@@ -561,10 +552,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   const SizedBox(height: 4),
                   Text(
                     'SKU: ${item.sku}',
-                    style: const TextStyle(
-                      color: Colors.grey,
-                      fontSize: 12,
-                    ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   const SizedBox(height: 4),
                   Row(
