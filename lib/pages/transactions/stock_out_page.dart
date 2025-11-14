@@ -49,26 +49,26 @@ class _StockOutPageState extends State<StockOutPage> {
                 children: [
                   // Stock Out Date
                   _buildDateSection(),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Customer
                   _buildCustomerSection(),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Notes
                   _buildNotesSection(),
-                  
+
                   const SizedBox(height: 24),
-                  
+
                   // Items
                   _buildItemsSection(),
                 ],
               ),
             ),
           ),
-          
+
           // Save Button
           Container(
             padding: const EdgeInsets.all(16),
@@ -90,7 +90,9 @@ class _StockOutPageState extends State<StockOutPage> {
                         width: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : const Text(
@@ -114,10 +116,7 @@ class _StockOutPageState extends State<StockOutPage> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF334155),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFF334155), width: 1),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -134,10 +133,7 @@ class _StockOutPageState extends State<StockOutPage> {
             onTap: _selectDate,
             child: Text(
               DateFormat('MMM dd, yyyy').format(selectedDate),
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-              ),
+              style: const TextStyle(color: Colors.white, fontSize: 16),
             ),
           ),
         ],
@@ -153,10 +149,7 @@ class _StockOutPageState extends State<StockOutPage> {
         decoration: BoxDecoration(
           color: const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF334155),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0xFF334155), width: 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -174,7 +167,9 @@ class _StockOutPageState extends State<StockOutPage> {
                 Text(
                   selectedCustomer ?? 'Choose',
                   style: TextStyle(
-                    color: selectedCustomer != null ? Colors.white : Colors.grey,
+                    color: selectedCustomer != null
+                        ? Colors.white
+                        : Colors.grey,
                     fontSize: 16,
                   ),
                 ),
@@ -200,10 +195,7 @@ class _StockOutPageState extends State<StockOutPage> {
         decoration: BoxDecoration(
           color: const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF334155),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0xFF334155), width: 1),
         ),
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -245,10 +237,7 @@ class _StockOutPageState extends State<StockOutPage> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: const Color(0xFF334155),
-          width: 1,
-        ),
+        border: Border.all(color: const Color(0xFF334155), width: 1),
       ),
       child: Column(
         children: [
@@ -272,10 +261,7 @@ class _StockOutPageState extends State<StockOutPage> {
                     children: [
                       Text(
                         _totalSelectedQuantity().toString(),
-                        style: TextStyle(
-                          color: Colors.grey[400],
-                          fontSize: 16,
-                        ),
+                        style: TextStyle(color: Colors.grey[400], fontSize: 16),
                       ),
                       const SizedBox(width: 8),
                       Icon(
@@ -289,7 +275,7 @@ class _StockOutPageState extends State<StockOutPage> {
               ),
             ),
           ),
-          
+
           // Items Content (compact list with in-place steppers like screenshot)
           Container(
             width: double.infinity,
@@ -298,9 +284,16 @@ class _StockOutPageState extends State<StockOutPage> {
                 ? Column(
                     children: [
                       const SizedBox(height: 8),
-                      Icon(Icons.inventory_2_outlined, size: 64, color: Colors.grey[600]),
+                      Icon(
+                        Icons.inventory_2_outlined,
+                        size: 64,
+                        color: Colors.grey[600],
+                      ),
                       const SizedBox(height: 12),
-                      Text('Select products', style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+                      Text(
+                        'Select products',
+                        style: TextStyle(color: Colors.grey[500], fontSize: 16),
+                      ),
                     ],
                   )
                 : Column(
@@ -325,23 +318,52 @@ class _StockOutPageState extends State<StockOutPage> {
                                 color: const Color(0xFF334155),
                                 borderRadius: BorderRadius.circular(6),
                               ),
-                              child: (item['image'] is String && (item['image'] as String).startsWith('http'))
+                              child:
+                                  (item['image'] is String &&
+                                      (item['image'] as String).startsWith(
+                                        'http',
+                                      ))
                                   ? ClipRRect(
                                       borderRadius: BorderRadius.circular(6),
-                                      child: Image.network(item['image'], fit: BoxFit.cover),
+                                      child: Image.network(
+                                        item['image'],
+                                        fit: BoxFit.cover,
+                                      ),
                                     )
-                                  : const Icon(Icons.laptop, color: Color(0xFF64748B), size: 18),
+                                  : const Icon(
+                                      Icons.laptop,
+                                      color: Color(0xFF64748B),
+                                      size: 18,
+                                    ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
-                              child: Text(
-                                item['name'] ?? '',
-                                style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w500),
-                                overflow: TextOverflow.ellipsis,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item['name'] ?? '',
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    'Available: ${item['availableStock'] ?? 0}',
+                                    style: TextStyle(
+                                      color: Colors.grey[400],
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
                             _MiniStepper(
                               quantity: qty,
+                              maxQuantity: item['availableStock'] ?? 999,
                               onDecrement: () {
                                 setState(() {
                                   final next = qty - 1;
@@ -353,6 +375,14 @@ class _StockOutPageState extends State<StockOutPage> {
                                 });
                               },
                               onIncrement: () {
+                                final maxStock = item['availableStock'] ?? 999;
+                                if (qty >= maxStock) {
+                                  showErrorSnackTop(
+                                    context,
+                                    'Cannot exceed available stock (${maxStock})',
+                                  );
+                                  return;
+                                }
                                 setState(() {
                                   item['quantity'] = qty + 1;
                                 });
@@ -373,8 +403,10 @@ class _StockOutPageState extends State<StockOutPage> {
     int total = 0;
     for (final item in selectedItems) {
       final dynamic q = item['quantity'];
-      if (q is num) total += q.toInt();
-      else total += int.tryParse('$q') ?? 0;
+      if (q is num)
+        total += q.toInt();
+      else
+        total += int.tryParse('$q') ?? 0;
     }
     return total;
   }
@@ -409,9 +441,7 @@ class _StockOutPageState extends State<StockOutPage> {
   void _selectCustomer() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const CustomersPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const CustomersPage()),
     ).then((selectedCustomerData) {
       if (selectedCustomerData != null) {
         setState(() {
@@ -428,10 +458,7 @@ class _StockOutPageState extends State<StockOutPage> {
         String tempNotes = notes;
         return AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
-          title: const Text(
-            'Notes',
-            style: TextStyle(color: Colors.white),
-          ),
+          title: const Text('Notes', style: TextStyle(color: Colors.white)),
           content: TextField(
             controller: TextEditingController(text: notes),
             onChanged: (value) => tempNotes = value,
@@ -455,7 +482,10 @@ class _StockOutPageState extends State<StockOutPage> {
                 });
                 Navigator.pop(context);
               },
-              child: const Text('Save', style: TextStyle(color: Color(0xFF3B82F6))),
+              child: const Text(
+                'Save',
+                style: TextStyle(color: Color(0xFF3B82F6)),
+              ),
             ),
           ],
         );
@@ -469,6 +499,7 @@ class _StockOutPageState extends State<StockOutPage> {
       MaterialPageRoute(
         builder: (context) => ItemsSelectionPage(
           preSelectedItems: selectedItems,
+          isStockOut: true, // Enable stock validation for Stock Out
         ),
       ),
     ).then((selectedItemsData) {
@@ -479,8 +510,6 @@ class _StockOutPageState extends State<StockOutPage> {
       }
     });
   }
-
-  
 
   Future<void> _saveStockOut() async {
     if (selectedCustomer == null) {
@@ -503,6 +532,31 @@ class _StockOutPageState extends State<StockOutPage> {
       return;
     }
 
+    // Validate stock availability before saving
+    for (final item in selectedItems) {
+      final qty = (item['quantity'] is num)
+          ? (item['quantity'] as num).toInt()
+          : int.tryParse('${item['quantity']}') ?? 0;
+      final availableStock = item['availableStock'] ?? 0;
+
+      if (qty > availableStock) {
+        if (mounted) {
+          showErrorSnackTop(
+            context,
+            'Insufficient stock for ${item['name']}. Available: $availableStock',
+          );
+        }
+        return;
+      }
+
+      if (availableStock == 0) {
+        if (mounted) {
+          showErrorSnackTop(context, '${item['name']} is out of stock');
+        }
+        return;
+      }
+    }
+
     try {
       setState(() {
         _isSaving = true;
@@ -510,17 +564,24 @@ class _StockOutPageState extends State<StockOutPage> {
 
       // Transform items to required API shape and validate product ids
       final List<Map<String, dynamic>> itemsForApi = selectedItems.map((item) {
-        final dynamic pid = item['productId'] ?? item['product'] ?? item['_id'] ?? item['id'];
+        final dynamic pid =
+            item['productId'] ?? item['product'] ?? item['_id'] ?? item['id'];
         final dynamic qty = item['quantity'];
         return {
           'product': pid,
-          'quantity': (qty is num) ? qty.toInt() : int.tryParse(qty?.toString() ?? '0') ?? 0,
+          'quantity': (qty is num)
+              ? qty.toInt()
+              : int.tryParse(qty?.toString() ?? '0') ?? 0,
         };
       }).toList();
 
-      final hasInvalid = itemsForApi.any((i) => i['product'] == null || (i['quantity'] as int) <= 0);
+      final hasInvalid = itemsForApi.any(
+        (i) => i['product'] == null || (i['quantity'] as int) <= 0,
+      );
       if (hasInvalid) {
-        throw Exception('Invalid selected items. Please reselect products and quantities.');
+        throw Exception(
+          'Invalid selected items. Please reselect products and quantities.',
+        );
       }
 
       final response = await AddTransactionApi.createStockOut(
@@ -532,14 +593,20 @@ class _StockOutPageState extends State<StockOutPage> {
 
       if (mounted) {
         // ignore: use_build_context_synchronously
-        showSuccessSnackTop(context, response['message'] ?? 'Transaction created successfully');
+        showSuccessSnackTop(
+          context,
+          response['message'] ?? 'Transaction created successfully',
+        );
       }
 
       Navigator.pop(context, true);
     } catch (e) {
       if (mounted) {
         // ignore: use_build_context_synchronously
-        showErrorSnackTop(context, e.toString().replaceFirst('Exception: ', ''));
+        showErrorSnackTop(
+          context,
+          e.toString().replaceFirst('Exception: ', ''),
+        );
       }
     } finally {
       if (mounted) {
@@ -553,11 +620,13 @@ class _StockOutPageState extends State<StockOutPage> {
 
 class _MiniStepper extends StatelessWidget {
   final int quantity;
+  final int? maxQuantity;
   final VoidCallback onDecrement;
   final VoidCallback onIncrement;
 
   const _MiniStepper({
     required this.quantity,
+    this.maxQuantity,
     required this.onDecrement,
     required this.onIncrement,
   });
@@ -578,7 +647,11 @@ class _MiniStepper extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             child: Text(
               quantity.toString(),
-              style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+              ),
             ),
           ),
           _MiniBtn(icon: Icons.add, onPressed: onIncrement),
@@ -592,10 +665,7 @@ class _MiniBtn extends StatelessWidget {
   final IconData icon;
   final VoidCallback onPressed;
 
-  const _MiniBtn({
-    required this.icon,
-    required this.onPressed,
-  });
+  const _MiniBtn({required this.icon, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {

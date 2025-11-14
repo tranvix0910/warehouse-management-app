@@ -484,23 +484,34 @@ class _StockInPageState extends State<StockInPage> {
 
   Future<void> _saveStockIn() async {
     if (selectedSupplier == null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select a supplier'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        showErrorSnackTop(context, 'Please select a supplier');
+      }
       return;
     }
 
     if (selectedItems.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please select at least one product'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        showErrorSnackTop(context, 'Please select at least one product');
+      }
       return;
+    }
+    
+    // Validate quantities
+    for (final item in selectedItems) {
+      final qty = (item['quantity'] is num)
+          ? (item['quantity'] as num).toInt()
+          : int.tryParse('${item['quantity']}') ?? 0;
+      
+      if (qty <= 0) {
+        if (mounted) {
+          showErrorSnackTop(
+            context,
+            'Please set valid quantity for ${item['name']}',
+          );
+        }
+        return;
+      }
     }
 
     try {
