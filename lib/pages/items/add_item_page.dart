@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:typed_data';
 import '../../apis/add_product_api.dart';
+import '../../utils/snack_bar.dart';
+import '../../services/product_service.dart';
 
 class AddItemPage extends StatefulWidget {
   const AddItemPage({Key? key}) : super(key: key);
@@ -17,12 +20,13 @@ class _AddItemPageState extends State<AddItemPage> {
   final TextEditingController _costController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
 
+  final TextEditingController _ramController = TextEditingController();
+  final TextEditingController _gpuController = TextEditingController();
+  final TextEditingController _colorController = TextEditingController();
+  final TextEditingController _processorController = TextEditingController();
+  
   String? _rfidUUID;
   String? _selectedCategory;
-  String? _selectedRAM;
-  String? _selectedGPU;
-  String? _selectedColor;
-  String? _selectedProcessor;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
   
@@ -36,6 +40,10 @@ class _AddItemPageState extends State<AddItemPage> {
     _quantityController.dispose();
     _costController.dispose();
     _priceController.dispose();
+    _ramController.dispose();
+    _gpuController.dispose();
+    _colorController.dispose();
+    _processorController.dispose();
     super.dispose();
   }
 
@@ -186,18 +194,35 @@ class _AddItemPageState extends State<AddItemPage> {
                               );
                             },
                           )
-                        : Image.file(
-                            File(_selectedImage!.path),
-                            width: 116,
-                            height: 116,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.error,
-                                size: 48,
-                                color: Color(0xFFEF4444),
-                              );
-                            },
+                        : kIsWeb
+                            ? FutureBuilder<Uint8List>(
+                                future: _selectedImage!.readAsBytes(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasData) {
+                                    return Image.memory(
+                                      snapshot.data!,
+                                      width: 116,
+                                      height: 116,
+                                      fit: BoxFit.cover,
+                                    );
+                                  }
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                },
+                              )
+                            : Image.file(
+                                File(_selectedImage!.path),
+                                width: 116,
+                                height: 116,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Icons.error,
+                                    size: 48,
+                                    color: Color(0xFFEF4444),
+                                  );
+                                },
                           ),
                   )
                 : const Icon(
@@ -391,10 +416,10 @@ class _AddItemPageState extends State<AddItemPage> {
         const SizedBox(height: 16),
 
         // RAM
-        _buildAttributeField(
+        _buildTextInputField(
           label: 'RAM',
-          value: _selectedRAM,
-          onTap: () => _showRAMDialog(),
+          controller: _ramController,
+          hint: 'e.g., 16GB, 32GB',
         ),
         const SizedBox(height: 16),
 
@@ -407,26 +432,26 @@ class _AddItemPageState extends State<AddItemPage> {
         const SizedBox(height: 16),
 
         // GPU
-        _buildAttributeField(
+        _buildTextInputField(
           label: 'GPU',
-          value: _selectedGPU,
-          onTap: () => _showGPUDialog(),
+          controller: _gpuController,
+          hint: 'e.g., Intel Iris Xe, NVIDIA RTX 3060',
         ),
         const SizedBox(height: 16),
 
         // Color
-        _buildAttributeField(
+        _buildTextInputField(
           label: 'Color',
-          value: _selectedColor,
-          onTap: () => _showColorDialog(),
+          controller: _colorController,
+          hint: 'e.g., Silver, Black, Space Gray',
         ),
         const SizedBox(height: 16),
 
         // Processor
-        _buildAttributeField(
+        _buildTextInputField(
           label: 'Processor',
-          value: _selectedProcessor,
-          onTap: () => _showProcessorDialog(),
+          controller: _processorController,
+          hint: 'e.g., Intel Core i7-1165G7, AMD Ryzen 7',
         ),
       ],
     );
@@ -515,7 +540,9 @@ class _AddItemPageState extends State<AddItemPage> {
         );
       }
     } catch (e) {
-      _showErrorSnackBar('Failed to pick image: $e');
+      if (mounted) {
+        showErrorSnackTop(context, 'Failed to pick image: $e');
+      }
     }
   }
 
@@ -648,7 +675,9 @@ class _AddItemPageState extends State<AddItemPage> {
         );
       }
     } catch (e) {
-      _showErrorSnackBar('Failed to ${source == ImageSource.camera ? 'capture' : 'select'} image: $e');
+      if (mounted) {
+        showErrorSnackTop(context, 'Failed to ${source == ImageSource.camera ? 'capture' : 'select'} image: $e');
+      }
     }
   }
 
@@ -757,42 +786,6 @@ class _AddItemPageState extends State<AddItemPage> {
       options: ['Ultrabook', 'Gaming', '2-in-1', 'Business', 'Creator'],
       currentValue: _selectedCategory,
       onSelected: (value) => setState(() => _selectedCategory = value),
-    );
-  }
-
-  void _showRAMDialog() {
-    _showSelectionDialog(
-      title: 'Select RAM',
-      options: ['4GB', '8GB', '16GB', '32GB', '64GB'],
-      currentValue: _selectedRAM,
-      onSelected: (value) => setState(() => _selectedRAM = value),
-    );
-  }
-
-  void _showGPUDialog() {
-    _showSelectionDialog(
-      title: 'Select GPU',
-      options: ['Intel Iris Xe', 'Intel UHD Graphics', 'NVIDIA GTX 1650', 'NVIDIA GTX 1650 Ti', 'NVIDIA RTX 3060', 'NVIDIA RTX 3070', 'NVIDIA RTX 3070 Ti', 'Apple M2 GPU'],
-      currentValue: _selectedGPU,
-      onSelected: (value) => setState(() => _selectedGPU = value),
-    );
-  }
-
-  void _showColorDialog() {
-    _showSelectionDialog(
-      title: 'Select Color',
-      options: ['Black', 'Silver', 'White', 'Space Gray', 'Blue', 'Red', 'Platinum', 'Emerald Green', 'Dark Gray'],
-      currentValue: _selectedColor,
-      onSelected: (value) => setState(() => _selectedColor = value),
-    );
-  }
-
-  void _showProcessorDialog() {
-    _showSelectionDialog(
-      title: 'Select Processor',
-      options: ['Intel Core i5-11400H', 'Intel Core i7-1165G7', 'Intel Core i7-1195G7', 'Intel Core i7-1255U', 'Intel Core i7-1260P', 'Intel Core i7-10750H', 'Intel Core i7-11800H', 'Intel Core i7-12700H', 'AMD Ryzen 5 5800H', 'AMD Ryzen 7 5800H', 'Apple M2', 'Apple M3 Pro', 'Apple M1'],
-      currentValue: _selectedProcessor,
-      onSelected: (value) => setState(() => _selectedProcessor = value),
     );
   }
 
@@ -1058,71 +1051,71 @@ class _AddItemPageState extends State<AddItemPage> {
   void _saveItem() async {
     // Validate required fields
     if (_nameController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please enter item name');
+      showErrorSnackTop(context, 'Please enter item name');
       return;
     }
 
     if (_rfidUUID == null || _rfidUUID!.isEmpty) {
-      _showErrorSnackBar('Please scan or enter SKU');
+      showErrorSnackTop(context, 'Please scan or enter SKU');
       return;
     }
 
     if (_selectedCategory == null) {
-      _showErrorSnackBar('Please select a category');
+      showErrorSnackTop(context, 'Please select a category');
       return;
     }
 
     if (_quantityController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please enter quantity');
+      showErrorSnackTop(context, 'Please enter quantity');
       return;
     }
 
     if (_costController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please enter cost');
+      showErrorSnackTop(context, 'Please enter cost');
       return;
     }
 
     if (_priceController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please enter price');
+      showErrorSnackTop(context, 'Please enter price');
       return;
     }
 
-    if (_selectedRAM == null) {
-      _showErrorSnackBar('Please select RAM');
+    if (_ramController.text.trim().isEmpty) {
+      showErrorSnackTop(context, 'Please enter RAM');
       return;
     }
 
-    if (_selectedGPU == null) {
-      _showErrorSnackBar('Please select GPU');
+    if (_gpuController.text.trim().isEmpty) {
+      showErrorSnackTop(context, 'Please enter GPU');
       return;
     }
 
-    if (_selectedColor == null) {
-      _showErrorSnackBar('Please select color');
+    if (_colorController.text.trim().isEmpty) {
+      showErrorSnackTop(context, 'Please enter color');
       return;
     }
 
-    if (_selectedProcessor == null) {
-      _showErrorSnackBar('Please select processor');
+    if (_processorController.text.trim().isEmpty) {
+      showErrorSnackTop(context, 'Please enter processor');
       return;
     }
 
     // Validate numeric fields
     final quantity = int.tryParse(_quantityController.text.trim());
     if (quantity == null || quantity <= 0) {
-      _showErrorSnackBar('Please enter a valid quantity');
+      showErrorSnackTop(context, 'Please enter a valid quantity');
       return;
     }
 
     final cost = double.tryParse(_costController.text.trim());
     if (cost == null || cost <= 0) {
-      _showErrorSnackBar('Please enter a valid cost');
+      showErrorSnackTop(context, 'Please enter a valid cost');
       return;
     }
 
     final price = double.tryParse(_priceController.text.trim());
     if (price == null || price <= 0) {
-      _showErrorSnackBar('Please enter a valid price');
+      showErrorSnackTop(context, 'Please enter a valid price');
       return;
     }
 
@@ -1143,32 +1136,28 @@ class _AddItemPageState extends State<AddItemPage> {
         cost: _costController.text.trim(),
         price: _priceController.text.trim(),
         quantity: _quantityController.text.trim(),
-        ram: _selectedRAM!,
+        ram: _ramController.text.trim(),
         date: formattedDate,
-        gpu: _selectedGPU!,
-        color: _selectedColor!,
-        processor: _selectedProcessor!,
+        gpu: _gpuController.text.trim(),
+        color: _colorController.text.trim(),
+        processor: _processorController.text.trim(),
         barcode: _rfidUUID, // Using RFID UUID as barcode for now
         xFileImage: _selectedImage, // Pass XFile for both web and mobile
       );
 
+      // Clear product cache to force refresh
+      ProductService.instance.clearCache();
+
       // Show success message
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Product created successfully!'),
-            backgroundColor: Color(0xFF50C878),
-            duration: Duration(seconds: 2),
-          ),
-        );
-
+        showSuccessSnackTop(context, 'Product created successfully!');
         // Navigate back to items page
         Navigator.pop(context, true); // Return true to indicate success
       }
 
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar(e.toString());
+        showErrorSnackTop(context, e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) {
@@ -1179,13 +1168,5 @@ class _AddItemPageState extends State<AddItemPage> {
     }
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFFEF4444),
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
+
 }
