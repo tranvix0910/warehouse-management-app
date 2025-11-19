@@ -91,26 +91,6 @@ class _ReportPageState extends State<ReportPage> {
         backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
         automaticallyImplyLeading: false,
-        actions: [
-          IconButton(
-            onPressed: () {
-              _showDateRangePicker();
-            },
-            icon: const Icon(
-              Icons.date_range,
-              color: Colors.white,
-            ),
-          ),
-          IconButton(
-            onPressed: () {
-              _exportToCSV();
-            },
-            icon: const Icon(
-              Icons.download,
-              color: Colors.white,
-            ),
-          ),
-        ],
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -489,58 +469,6 @@ class _ReportPageState extends State<ReportPage> {
       default:
         return Icons.info;
     }
-  }
-
-  void _showDateRangePicker() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text(
-          'Select Date Range',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Date range selection feature will be updated soon.',
-          style: TextStyle(color: Colors.grey),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'OK',
-              style: TextStyle(color: Color(0xFF3B82F6)),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  void _exportToCSV() {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        title: const Text(
-          'Export CSV',
-          style: TextStyle(color: Colors.white),
-        ),
-        content: const Text(
-          'Exporting CSV report...\nThis feature will be completed in the next version.',
-          style: TextStyle(color: Colors.grey),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text(
-              'OK',
-              style: TextStyle(color: Color(0xFF3B82F6)),
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Future<void> _loadData() async {
