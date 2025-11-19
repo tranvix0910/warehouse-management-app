@@ -10,7 +10,9 @@ class AuthApi {
       final response = await ApiClient.dio.post(
         '/auth/login',
         data: {'email': email, 'password': password},
-        options: Options(headers: {'Authorization': null}), // No auth needed for login
+        options: Options(
+          headers: {'Authorization': null},
+        ), // No auth needed for login
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -20,7 +22,9 @@ class AuthApi {
     } on DioException catch (e) {
       if (e.response != null) {
         final errorData = e.response!.data;
-        throw Exception(errorData['message'] ?? 'Login failed (${e.response!.statusCode})');
+        throw Exception(
+          errorData['message'] ?? 'Login failed (${e.response!.statusCode})',
+        );
       }
       throw Exception('Network error: ${e.message}');
     }
@@ -34,12 +38,10 @@ class AuthApi {
     try {
       final response = await ApiClient.dio.post(
         '/auth/register',
-        data: {
-          'email': email,
-          'username': username,
-          'password': password,
-        },
-        options: Options(headers: {'Authorization': null}), // No auth needed for register
+        data: {'email': email, 'username': username, 'password': password},
+        options: Options(
+          headers: {'Authorization': null},
+        ), // No auth needed for register
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -49,7 +51,9 @@ class AuthApi {
     } on DioException catch (e) {
       if (e.response != null) {
         final errorData = e.response!.data;
-        throw Exception(errorData['message'] ?? 'Register failed (${e.response!.statusCode})');
+        throw Exception(
+          errorData['message'] ?? 'Register failed (${e.response!.statusCode})',
+        );
       }
       throw Exception('Network error: ${e.message}');
     }
@@ -63,7 +67,9 @@ class AuthApi {
       final response = await ApiClient.dio.post(
         '/auth/verify-otp',
         data: {'email': email, 'otp': otp},
-        options: Options(headers: {'Authorization': null}), // No auth needed for OTP
+        options: Options(
+          headers: {'Authorization': null},
+        ), // No auth needed for OTP
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -73,18 +79,23 @@ class AuthApi {
     } on DioException catch (e) {
       if (e.response != null) {
         final errorData = e.response!.data;
-        throw Exception(errorData['message'] ?? 'OTP verification failed (${e.response!.statusCode})');
+        throw Exception(
+          errorData['message'] ??
+              'OTP verification failed (${e.response!.statusCode})',
+        );
       }
       throw Exception('Network error: ${e.message}');
     }
   }
-  
+
   static Future<Map<String, dynamic>> resendOtp({required String email}) async {
     try {
       final response = await ApiClient.dio.post(
         '/auth/resend-otp',
         data: {'email': email},
-        options: Options(headers: {'Authorization': null}), // No auth needed for resend OTP
+        options: Options(
+          headers: {'Authorization': null},
+        ), // No auth needed for resend OTP
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -94,7 +105,29 @@ class AuthApi {
     } on DioException catch (e) {
       if (e.response != null) {
         final errorData = e.response!.data;
-        throw Exception(errorData['message'] ?? 'Resend OTP failed (${e.response!.statusCode})');
+        throw Exception(
+          errorData['message'] ??
+              'Resend OTP failed (${e.response!.statusCode})',
+        );
+      }
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  static Future<void> logout() async {
+    try {
+      final response = await ApiClient.dio.post('/auth/logout');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return;
+      }
+      throw Exception(response.data['message'] ?? 'Logout failed');
+    } on DioException catch (e) {
+      if (e.response != null) {
+        final errorData = e.response!.data;
+        throw Exception(
+          errorData['message'] ?? 'Logout failed (${e.response!.statusCode})',
+        );
       }
       throw Exception('Network error: ${e.message}');
     }
