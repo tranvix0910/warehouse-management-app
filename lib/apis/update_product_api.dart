@@ -4,43 +4,39 @@ import 'package:image_picker/image_picker.dart';
 import 'package:dio/dio.dart';
 import 'api_client.dart';
 
-class AddProductApi {
-  static Future<Map<String, dynamic>> addProduct({
-    required String productName,
-    required String sku,
-    required String category,
-    required String cost,
-    required String price,
-    required String quantity,
-    required String ram,
-    required String date,
-    required String gpu,
-    required String color,
-    required String processor,
-    String? barcode,
+class UpdateProductApi {
+  static Future<Map<String, dynamic>> updateProduct({
+    required String productId,
+    String? productName,
+    String? sku,
+    String? category,
+    String? cost,
+    String? price,
+    String? quantity,
+    String? ram,
+    String? date,
+    String? gpu,
+    String? color,
+    String? processor,
     File? image,
     XFile? xFileImage,
   }) async {
     try {
       // Create form data
-      final formData = FormData.fromMap({
-        'productName': productName,
-        'SKU': sku,
-        'category': category,
-        'cost': cost,
-        'price': price,
-        'quantity': quantity,
-        'RAM': ram,
-        'date': date,
-        'GPU': gpu,
-        'color': color,
-        'processor': processor,
-      });
+      final formData = FormData();
 
-      // Add barcode if provided
-      if (barcode != null && barcode.isNotEmpty) {
-        formData.fields.add(MapEntry('barcode', barcode));
-      }
+      // Add fields only if they are provided
+      if (productName != null) formData.fields.add(MapEntry('productName', productName));
+      if (sku != null) formData.fields.add(MapEntry('SKU', sku));
+      if (category != null) formData.fields.add(MapEntry('category', category));
+      if (cost != null) formData.fields.add(MapEntry('cost', cost));
+      if (price != null) formData.fields.add(MapEntry('price', price));
+      if (quantity != null) formData.fields.add(MapEntry('quantity', quantity));
+      if (ram != null) formData.fields.add(MapEntry('RAM', ram));
+      if (date != null) formData.fields.add(MapEntry('date', date));
+      if (gpu != null) formData.fields.add(MapEntry('GPU', gpu));
+      if (color != null) formData.fields.add(MapEntry('color', color));
+      if (processor != null) formData.fields.add(MapEntry('processor', processor));
 
       // Add image if provided
       if (image != null) {
@@ -65,18 +61,15 @@ class AddProductApi {
       }
 
       // Send the request
-      final response = await ApiClient.dio.post(
-        '/products/create',
+      final response = await ApiClient.dio.put(
+        '/products/update/$productId',
         data: formData,
       );
 
-      if (response.statusCode == 200 || response.statusCode == 201) {
-        if (response.data['success'] == true) {
-          return response.data;
-        }
-        throw Exception(response.data['message'] ?? 'Failed to create product');
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        return response.data;
       }
-      throw Exception('Failed to create product');
+      throw Exception(response.data['message'] ?? 'Failed to update product');
       
     } on DioException catch (e) {
       if (e.response != null) {
@@ -89,13 +82,13 @@ class AddProductApi {
           throw Exception('Access forbidden. Insufficient permissions.');
         } else if (statusCode == 400) {
           throw Exception(errorData['message'] ?? 'Invalid product data provided.');
-        } else if (statusCode == 409) {
-          throw Exception('Product with this SKU already exists.');
+        } else if (statusCode == 404) {
+          throw Exception('Product not found.');
         } else if (statusCode! >= 500) {
           throw Exception('Server error. Please try again later.');
         }
         
-        throw Exception(errorData['message'] ?? 'Failed to create product ($statusCode)');
+        throw Exception(errorData['message'] ?? 'Failed to update product ($statusCode)');
       }
       throw Exception('Network error: ${e.message}');
     } catch (e) {
@@ -106,4 +99,3 @@ class AddProductApi {
     }
   }
 }
-

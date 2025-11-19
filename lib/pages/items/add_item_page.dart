@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import 'dart:typed_data';
+import 'package:firebase_database/firebase_database.dart';
 import '../../apis/add_product_api.dart';
+import '../../utils/snack_bar.dart';
+import '../../services/product_service.dart';
 
 class AddItemPage extends StatefulWidget {
   const AddItemPage({Key? key}) : super(key: key);
@@ -17,12 +21,13 @@ class _AddItemPageState extends State<AddItemPage> {
   final TextEditingController _costController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
 
+  final TextEditingController _ramController = TextEditingController();
+  final TextEditingController _gpuController = TextEditingController();
+  final TextEditingController _colorController = TextEditingController();
+  final TextEditingController _processorController = TextEditingController();
+  
   String? _rfidUUID;
   String? _selectedCategory;
-  String? _selectedRAM;
-  String? _selectedGPU;
-  String? _selectedColor;
-  String? _selectedProcessor;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
   
@@ -36,6 +41,10 @@ class _AddItemPageState extends State<AddItemPage> {
     _quantityController.dispose();
     _costController.dispose();
     _priceController.dispose();
+    _ramController.dispose();
+    _gpuController.dispose();
+    _colorController.dispose();
+    _processorController.dispose();
     super.dispose();
   }
 
@@ -186,18 +195,35 @@ class _AddItemPageState extends State<AddItemPage> {
                               );
                             },
                           )
-                        : Image.file(
-                            File(_selectedImage!.path),
-                            width: 116,
-                            height: 116,
-                            fit: BoxFit.cover,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.error,
-                                size: 48,
-                                color: Color(0xFFEF4444),
-                              );
-                            },
+                        : kIsWeb
+                            ? FutureBuilder<Uint8List>(
+                                future: _selectedImage!.readAsBytes(),
+                                builder: (context, snapshot) {
+                                  if (snapshot.hasData) {
+                                    return Image.memory(
+                                      snapshot.data!,
+                                      width: 116,
+                                      height: 116,
+                                      fit: BoxFit.cover,
+                                    );
+                                  }
+                                  return const Center(
+                                    child: CircularProgressIndicator(),
+                                  );
+                                },
+                              )
+                            : Image.file(
+                                File(_selectedImage!.path),
+                                width: 116,
+                                height: 116,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) {
+                                  return const Icon(
+                                    Icons.error,
+                                    size: 48,
+                                    color: Color(0xFFEF4444),
+                                  );
+                                },
                           ),
                   )
                 : const Icon(
@@ -391,10 +417,10 @@ class _AddItemPageState extends State<AddItemPage> {
         const SizedBox(height: 16),
 
         // RAM
-        _buildAttributeField(
+        _buildTextInputField(
           label: 'RAM',
-          value: _selectedRAM,
-          onTap: () => _showRAMDialog(),
+          controller: _ramController,
+          hint: 'e.g., 16GB, 32GB',
         ),
         const SizedBox(height: 16),
 
@@ -407,26 +433,26 @@ class _AddItemPageState extends State<AddItemPage> {
         const SizedBox(height: 16),
 
         // GPU
-        _buildAttributeField(
+        _buildTextInputField(
           label: 'GPU',
-          value: _selectedGPU,
-          onTap: () => _showGPUDialog(),
+          controller: _gpuController,
+          hint: 'e.g., Intel Iris Xe, NVIDIA RTX 3060',
         ),
         const SizedBox(height: 16),
 
         // Color
-        _buildAttributeField(
+        _buildTextInputField(
           label: 'Color',
-          value: _selectedColor,
-          onTap: () => _showColorDialog(),
+          controller: _colorController,
+          hint: 'e.g., Silver, Black, Space Gray',
         ),
         const SizedBox(height: 16),
 
         // Processor
-        _buildAttributeField(
+        _buildTextInputField(
           label: 'Processor',
-          value: _selectedProcessor,
-          onTap: () => _showProcessorDialog(),
+          controller: _processorController,
+          hint: 'e.g., Intel Core i7-1165G7, AMD Ryzen 7',
         ),
       ],
     );
@@ -515,7 +541,9 @@ class _AddItemPageState extends State<AddItemPage> {
         );
       }
     } catch (e) {
-      _showErrorSnackBar('Failed to pick image: $e');
+      if (mounted) {
+        showErrorSnackTop(context, 'Failed to pick image: $e');
+      }
     }
   }
 
@@ -648,7 +676,9 @@ class _AddItemPageState extends State<AddItemPage> {
         );
       }
     } catch (e) {
-      _showErrorSnackBar('Failed to ${source == ImageSource.camera ? 'capture' : 'select'} image: $e');
+      if (mounted) {
+        showErrorSnackTop(context, 'Failed to ${source == ImageSource.camera ? 'capture' : 'select'} image: $e');
+      }
     }
   }
 
@@ -707,6 +737,45 @@ class _AddItemPageState extends State<AddItemPage> {
             
             const SizedBox(height: 16),
             
+            // Scan QR Code option
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.qr_code_scanner,
+                  color: Color(0xFF8B5CF6),
+                  size: 20,
+                ),
+              ),
+              title: const Text(
+                'Scan QR Code',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: const Text(
+                'Read QR code from Firebase',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _scanWithQRCode();
+              },
+            ),
+            
+            const SizedBox(height: 16),
+            
             // Manual RFID input option
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -757,42 +826,6 @@ class _AddItemPageState extends State<AddItemPage> {
       options: ['Ultrabook', 'Gaming', '2-in-1', 'Business', 'Creator'],
       currentValue: _selectedCategory,
       onSelected: (value) => setState(() => _selectedCategory = value),
-    );
-  }
-
-  void _showRAMDialog() {
-    _showSelectionDialog(
-      title: 'Select RAM',
-      options: ['4GB', '8GB', '16GB', '32GB', '64GB'],
-      currentValue: _selectedRAM,
-      onSelected: (value) => setState(() => _selectedRAM = value),
-    );
-  }
-
-  void _showGPUDialog() {
-    _showSelectionDialog(
-      title: 'Select GPU',
-      options: ['Intel Iris Xe', 'Intel UHD Graphics', 'NVIDIA GTX 1650', 'NVIDIA GTX 1650 Ti', 'NVIDIA RTX 3060', 'NVIDIA RTX 3070', 'NVIDIA RTX 3070 Ti', 'Apple M2 GPU'],
-      currentValue: _selectedGPU,
-      onSelected: (value) => setState(() => _selectedGPU = value),
-    );
-  }
-
-  void _showColorDialog() {
-    _showSelectionDialog(
-      title: 'Select Color',
-      options: ['Black', 'Silver', 'White', 'Space Gray', 'Blue', 'Red', 'Platinum', 'Emerald Green', 'Dark Gray'],
-      currentValue: _selectedColor,
-      onSelected: (value) => setState(() => _selectedColor = value),
-    );
-  }
-
-  void _showProcessorDialog() {
-    _showSelectionDialog(
-      title: 'Select Processor',
-      options: ['Intel Core i5-1135G7', 'Intel Core i5-1235U', 'Intel Core i5-10210U', 'Intel Core i5-11400H', 'Intel Core i7-1165G7', 'Intel Core i7-1195G7', 'Intel Core i7-1255U', 'Intel Core i7-1260P', 'Intel Core i7-10750H', 'Intel Core i7-11800H', 'Intel Core i7-12700H', 'AMD Ryzen 5 5800H', 'AMD Ryzen 7 5800H', 'Apple M2'],
-      currentValue: _selectedProcessor,
-      onSelected: (value) => setState(() => _selectedProcessor = value),
     );
   }
 
@@ -861,9 +894,8 @@ class _AddItemPageState extends State<AddItemPage> {
     );
   }
 
-  void _scanWithRFID() {
-    // Implement RFID scanning functionality
-    // For now, we'll simulate RFID scanning
+  void _scanWithRFID() async {
+    // Đọc RFID từ Firebase Realtime Database
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -877,7 +909,7 @@ class _AddItemPageState extends State<AddItemPage> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Scanning RFID Card...',
+              'Reading RFID from Firebase...',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -885,7 +917,7 @@ class _AddItemPageState extends State<AddItemPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Place RFID card near the reader',
+              'Waiting for RFID data...',
               style: TextStyle(
                 color: Color(0xFF64748B),
                 fontSize: 12,
@@ -896,37 +928,200 @@ class _AddItemPageState extends State<AddItemPage> {
       ),
     );
 
-    // Simulate scanning delay
-    Future.delayed(const Duration(seconds: 2), () {
+    try {
+      // Import Firebase
+      final ref = FirebaseDatabase.instance.ref('sensors/rfid_uid');
+      final snapshot = await ref.get();
+
       Navigator.pop(context); // Close loading dialog
-      
-      // Generate a realistic RFID UUID format
-      String generateRFIDUUID() {
-        final random = DateTime.now().millisecondsSinceEpoch;
-        final part1 = (random % 0xFFFFFFFF).toRadixString(16).padLeft(8, '0');
-        final part2 = ((random ~/ 1000) % 0xFFFF).toRadixString(16).padLeft(4, '0');
-        final part3 = ((random ~/ 10000) % 0xFFFF).toRadixString(16).padLeft(4, '0');
-        final part4 = ((random ~/ 100000) % 0xFFFF).toRadixString(16).padLeft(4, '0');
-        final part5 = ((random ~/ 1000000) % 0xFFFFFFFFFFFF).toRadixString(16).padLeft(12, '0');
-        
-        return '${part1}-${part2}-${part3}-${part4}-${part5}'.toUpperCase();
+
+      if (snapshot.exists && snapshot.value != null) {
+        final rfidUid = snapshot.value.toString();
+
+        // Kiểm tra null hoặc empty string
+        if (rfidUid.isNotEmpty && 
+            rfidUid != 'null' && 
+            rfidUid != '""' && 
+            rfidUid != "''") {
+          // Set the RFID UUID từ Firebase
+          setState(() {
+            _rfidUUID = rfidUid;
+          });
+
+          // Show success message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('✅ RFID Scanned: $_rfidUUID'),
+              backgroundColor: const Color(0xFF50C878),
+              duration: const Duration(seconds: 3),
+            ),
+          );
+        } else {
+          // RFID data là null hoặc empty
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('⚠️ RFID is null. Please scan RFID card first.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 3),
+            ),
+          );
+        }
+      } else {
+        // Không có rfid_uid trong Firebase
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('❌ No RFID data in Firebase. Please scan RFID card.'),
+            backgroundColor: Colors.red,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    } catch (e) {
+      if (Navigator.canPop(context)) {
+        Navigator.pop(context); // Close loading dialog nếu còn mở
       }
       
-      // Set the scanned RFID UUID
-      setState(() {
-        _rfidUUID = generateRFIDUUID();
-      });
-
+      // Show error
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('RFID UUID: $_rfidUUID'),
-          backgroundColor: const Color(0xFF50C878),
-          duration: const Duration(seconds: 3),
+          content: Text('❌ Error reading RFID: $e'),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
         ),
       );
-    });
+    }
   }
 
+  void _scanWithQRCode() async {
+    // Set check_qr = true để bắt đầu scan
+    try {
+      final ref = FirebaseDatabase.instance.ref('sensors');
+      await ref.update({'check_qr': true});
+      
+      print('🔵 QR Scan started: check_qr = true');
+    } catch (e) {
+      print('❌ Error setting check_qr: $e');
+      return;
+    }
+    
+    bool isScanning = true;
+    
+    // Show dialog đang scan
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(
+              color: Color(0xFF8B5CF6),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Waiting for QR Code...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Scanning QR code from Firebase',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Listen cho QR data
+    final ref = FirebaseDatabase.instance.ref('sensors/qr_data');
+    late final subscription;
+    
+    subscription = ref.onValue.listen((event) async {
+      if (!isScanning || !mounted) return;
+      
+      if (event.snapshot.exists && event.snapshot.value != null) {
+        final qrData = event.snapshot.value.toString();
+        
+        // Kiểm tra nếu có data hợp lệ
+        if (qrData.isNotEmpty && 
+            qrData != 'null' && 
+            qrData != '""' && 
+            qrData != "''") {
+          
+          print('✅ QR Data received: $qrData');
+          
+          // Cancel subscription ngay
+          isScanning = false;
+          await subscription.cancel();
+          
+          // Set check_qr = false để stop scan
+          try {
+            await FirebaseDatabase.instance.ref('sensors').update({'check_qr': false});
+            print('🔴 QR Scan stopped: check_qr = false');
+          } catch (e) {
+            print('❌ Error setting check_qr: $e');
+          }
+          
+          // Close dialog safely
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+          
+          // Set SKU từ QR code
+          if (mounted) {
+            setState(() {
+              _rfidUUID = qrData;
+            });
+            
+            // Show success
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('✅ QR Code Scanned: $_rfidUUID'),
+                backgroundColor: const Color(0xFF8B5CF6),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
+    });
+    
+    // Timeout sau 30 giây
+    Future.delayed(const Duration(seconds: 30), () async {
+      if (!isScanning || !mounted) return;
+      
+      isScanning = false;
+      await subscription.cancel();
+      
+      // Set check_qr = false
+      try {
+        await FirebaseDatabase.instance.ref('sensors').update({'check_qr': false});
+        print('⏱️ Timeout: check_qr = false');
+      } catch (e) {
+        print('❌ Error: $e');
+      }
+      
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⏱️ QR Scan timeout. Please try again.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    });
+  }
+  
   void _manualRFIDInput() {
     TextEditingController rfidController = TextEditingController();
     
@@ -1058,71 +1253,71 @@ class _AddItemPageState extends State<AddItemPage> {
   void _saveItem() async {
     // Validate required fields
     if (_nameController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please enter item name');
+      showErrorSnackTop(context, 'Please enter item name');
       return;
     }
 
     if (_rfidUUID == null || _rfidUUID!.isEmpty) {
-      _showErrorSnackBar('Please scan or enter SKU');
+      showErrorSnackTop(context, 'Please scan or enter SKU');
       return;
     }
 
     if (_selectedCategory == null) {
-      _showErrorSnackBar('Please select a category');
+      showErrorSnackTop(context, 'Please select a category');
       return;
     }
 
     if (_quantityController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please enter quantity');
+      showErrorSnackTop(context, 'Please enter quantity');
       return;
     }
 
     if (_costController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please enter cost');
+      showErrorSnackTop(context, 'Please enter cost');
       return;
     }
 
     if (_priceController.text.trim().isEmpty) {
-      _showErrorSnackBar('Please enter price');
+      showErrorSnackTop(context, 'Please enter price');
       return;
     }
 
-    if (_selectedRAM == null) {
-      _showErrorSnackBar('Please select RAM');
+    if (_ramController.text.trim().isEmpty) {
+      showErrorSnackTop(context, 'Please enter RAM');
       return;
     }
 
-    if (_selectedGPU == null) {
-      _showErrorSnackBar('Please select GPU');
+    if (_gpuController.text.trim().isEmpty) {
+      showErrorSnackTop(context, 'Please enter GPU');
       return;
     }
 
-    if (_selectedColor == null) {
-      _showErrorSnackBar('Please select color');
+    if (_colorController.text.trim().isEmpty) {
+      showErrorSnackTop(context, 'Please enter color');
       return;
     }
 
-    if (_selectedProcessor == null) {
-      _showErrorSnackBar('Please select processor');
+    if (_processorController.text.trim().isEmpty) {
+      showErrorSnackTop(context, 'Please enter processor');
       return;
     }
 
     // Validate numeric fields
     final quantity = int.tryParse(_quantityController.text.trim());
     if (quantity == null || quantity <= 0) {
-      _showErrorSnackBar('Please enter a valid quantity');
+      showErrorSnackTop(context, 'Please enter a valid quantity');
       return;
     }
 
     final cost = double.tryParse(_costController.text.trim());
     if (cost == null || cost <= 0) {
-      _showErrorSnackBar('Please enter a valid cost');
+      showErrorSnackTop(context, 'Please enter a valid cost');
       return;
     }
 
     final price = double.tryParse(_priceController.text.trim());
     if (price == null || price <= 0) {
-      _showErrorSnackBar('Please enter a valid price');
+      showErrorSnackTop(context, 'Please enter a valid price');
       return;
     }
 
@@ -1143,32 +1338,28 @@ class _AddItemPageState extends State<AddItemPage> {
         cost: _costController.text.trim(),
         price: _priceController.text.trim(),
         quantity: _quantityController.text.trim(),
-        ram: _selectedRAM!,
+        ram: _ramController.text.trim(),
         date: formattedDate,
-        gpu: _selectedGPU!,
-        color: _selectedColor!,
-        processor: _selectedProcessor!,
+        gpu: _gpuController.text.trim(),
+        color: _colorController.text.trim(),
+        processor: _processorController.text.trim(),
         barcode: _rfidUUID, // Using RFID UUID as barcode for now
         xFileImage: _selectedImage, // Pass XFile for both web and mobile
       );
 
+      // Clear product cache to force refresh
+      ProductService.instance.clearCache();
+
       // Show success message
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Product created successfully!'),
-            backgroundColor: Color(0xFF50C878),
-            duration: Duration(seconds: 2),
-          ),
-        );
-
+        showSuccessSnackTop(context, 'Product created successfully!');
         // Navigate back to items page
         Navigator.pop(context, true); // Return true to indicate success
       }
 
     } catch (e) {
       if (mounted) {
-        _showErrorSnackBar(e.toString());
+        showErrorSnackTop(context, e.toString().replaceFirst('Exception: ', ''));
       }
     } finally {
       if (mounted) {
@@ -1179,13 +1370,5 @@ class _AddItemPageState extends State<AddItemPage> {
     }
   }
 
-  void _showErrorSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFFEF4444),
-        duration: const Duration(seconds: 3),
-      ),
-    );
-  }
+
 }
