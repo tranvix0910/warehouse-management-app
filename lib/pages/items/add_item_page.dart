@@ -895,7 +895,20 @@ class _AddItemPageState extends State<AddItemPage> {
   }
 
   void _scanWithRFID() async {
-    // Đọc RFID từ Firebase Realtime Database
+    // Set check_rfid = true để bắt đầu scan
+    try {
+      final ref = FirebaseDatabase.instance.ref('sensors');
+      await ref.update({'check_rfid': true});
+      
+      print('🔵 RFID Scan started: check_rfid = true');
+    } catch (e) {
+      print('❌ Error setting check_rfid: $e');
+      return;
+    }
+    
+    bool isScanning = true;
+    
+    // Show dialog đang scan
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -909,7 +922,7 @@ class _AddItemPageState extends State<AddItemPage> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Reading RFID from Firebase...',
+              'Waiting for RFID...',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -917,7 +930,7 @@ class _AddItemPageState extends State<AddItemPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Waiting for RFID data...',
+              'Scanning RFID card from Firebase',
               style: TextStyle(
                 color: Color(0xFF64748B),
                 fontSize: 12,
@@ -928,68 +941,90 @@ class _AddItemPageState extends State<AddItemPage> {
       ),
     );
 
-    try {
-      // Import Firebase
-      final ref = FirebaseDatabase.instance.ref('sensors/rfid_uid');
-      final snapshot = await ref.get();
-
-      Navigator.pop(context); // Close loading dialog
-
-      if (snapshot.exists && snapshot.value != null) {
-        final rfidUid = snapshot.value.toString();
-
-        // Kiểm tra null hoặc empty string
+    // Listen cho RFID data
+    final ref = FirebaseDatabase.instance.ref('sensors/rfid_uid');
+    late final subscription;
+    
+    subscription = ref.onValue.listen((event) async {
+      if (!isScanning || !mounted) return;
+      
+      if (event.snapshot.exists && event.snapshot.value != null) {
+        final rfidUid = event.snapshot.value.toString();
+        
+        // Kiểm tra nếu có data hợp lệ
         if (rfidUid.isNotEmpty && 
             rfidUid != 'null' && 
             rfidUid != '""' && 
             rfidUid != "''") {
-          // Set the RFID UUID từ Firebase
-          setState(() {
-            _rfidUUID = rfidUid;
-          });
-
-          // Show success message
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text('✅ RFID Scanned: $_rfidUUID'),
-              backgroundColor: const Color(0xFF50C878),
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        } else {
-          // RFID data là null hoặc empty
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('⚠️ RFID is null. Please scan RFID card first.'),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 3),
-            ),
-          );
+          
+          print('✅ RFID Data received: $rfidUid');
+          
+          // Cancel subscription ngay
+          isScanning = false;
+          await subscription.cancel();
+          
+          // Set rfid_uid = "null" và check_rfid = false sau khi nhận được UID
+          try {
+            await FirebaseDatabase.instance.ref('sensors').update({
+              'rfid_uid': 'null',
+              'check_rfid': false,
+            });
+            print('🔴 RFID Scan stopped: rfid_uid = "null", check_rfid = false');
+          } catch (e) {
+            print('❌ Error setting rfid_uid and check_rfid: $e');
+          }
+          
+          // Close dialog safely
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+          
+          // Set SKU từ RFID
+          if (mounted) {
+            setState(() {
+              _rfidUUID = rfidUid;
+            });
+            
+            // Show success
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('✅ RFID Scanned: $_rfidUUID'),
+                backgroundColor: const Color(0xFF50C878),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
         }
-      } else {
-        // Không có rfid_uid trong Firebase
+      }
+    });
+    
+    // Timeout sau 30 giây
+    Future.delayed(const Duration(seconds: 30), () async {
+      if (!isScanning || !mounted) return;
+      
+      isScanning = false;
+      await subscription.cancel();
+      
+      // Set check_rfid = false
+      try {
+        await FirebaseDatabase.instance.ref('sensors').update({'check_rfid': false});
+        print('⏱️ Timeout: check_rfid = false');
+      } catch (e) {
+        print('❌ Error: $e');
+      }
+      
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+        
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('❌ No RFID data in Firebase. Please scan RFID card.'),
-            backgroundColor: Colors.red,
+            content: Text('⏱️ RFID Scan timeout. Please try again.'),
+            backgroundColor: Colors.orange,
             duration: Duration(seconds: 3),
           ),
         );
       }
-    } catch (e) {
-      if (Navigator.canPop(context)) {
-        Navigator.pop(context); // Close loading dialog nếu còn mở
-      }
-      
-      // Show error
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('❌ Error reading RFID: $e'),
-          backgroundColor: Colors.red,
-          duration: const Duration(seconds: 4),
-        ),
-      );
-    }
+    });
   }
 
   void _scanWithQRCode() async {
@@ -1061,10 +1096,13 @@ class _AddItemPageState extends State<AddItemPage> {
           isScanning = false;
           await subscription.cancel();
           
-          // Set check_qr = false để stop scan
+          // Set check_qr = false và qr_data = "null" để stop scan
           try {
-            await FirebaseDatabase.instance.ref('sensors').update({'check_qr': false});
-            print('🔴 QR Scan stopped: check_qr = false');
+            await FirebaseDatabase.instance.ref('sensors').update({
+              'check_qr': false,
+              'qr_data': 'null',
+            });
+            print('🔴 QR Scan stopped: check_qr = false, qr_data = "null"');
           } catch (e) {
             print('❌ Error setting check_qr: $e');
           }
@@ -1100,10 +1138,13 @@ class _AddItemPageState extends State<AddItemPage> {
       isScanning = false;
       await subscription.cancel();
       
-      // Set check_qr = false
+      // Set check_qr = false và qr_data = "null"
       try {
-        await FirebaseDatabase.instance.ref('sensors').update({'check_qr': false});
-        print('⏱️ Timeout: check_qr = false');
+        await FirebaseDatabase.instance.ref('sensors').update({
+          'check_qr': false,
+          'qr_data': 'null',
+        });
+        print('⏱️ Timeout: check_qr = false, qr_data = "null"');
       } catch (e) {
         print('❌ Error: $e');
       }
