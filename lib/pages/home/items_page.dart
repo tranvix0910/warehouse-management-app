@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../items/details_page.dart';
 import '../items/add_item_page.dart';
-import '../../apis/get_all_product_api.dart';
+import '../../services/product_service.dart';
 
 class ItemModel {
   final String id;
@@ -51,6 +51,24 @@ class ItemModel {
       processor: json['processor'] ?? '',
     );
   }
+
+  ProductModel toProductModel() {
+    return ProductModel(
+      id: id,
+      name: name,
+      sku: sku,
+      cost: cost.replaceAll(' USD', ''),
+      price: price.replaceAll(' USD', ''),
+      quantity: stock,
+      image: image,
+      category: category,
+      ram: ram,
+      date: date,
+      gpu: gpu,
+      color: color,
+      processor: processor,
+    );
+  }
 }
 
 class ItemsPage extends StatefulWidget {
@@ -62,8 +80,16 @@ class ItemsPage extends StatefulWidget {
 
 class _ItemsPageState extends State<ItemsPage> {
   List<ItemModel> items = [];
+  List<ItemModel> filteredItems = [];
   bool isLoading = true;
   String? errorMessage;
+  
+  // Advanced search filters
+  String _filterSku = '';
+  String _filterName = '';
+  String _filterCategory = '';
+
+  // (reserved for future: filters summary string)
 
   @override
   void initState() {
@@ -78,17 +104,120 @@ class _ItemsPageState extends State<ItemsPage> {
         errorMessage = null;
       });
 
-      final response = await GetAllProductsApi.getAllProducts();
-      final List<dynamic> productsData = response['data'] ?? [];
+      final products = await ProductService.instance.getProducts(forceRefresh: true);
       
       setState(() {
-        items = productsData.map((json) => ItemModel.fromJson(json)).toList();
+        items = products.map((product) => ItemModel(
+          id: product.id,
+          name: product.name,
+          sku: product.sku,
+          cost: '${product.cost} USD',
+          price: '${product.price} USD',
+          stock: product.quantity,
+          image: product.image,
+          category: product.category,
+          ram: product.ram,
+          date: product.date,
+          gpu: product.gpu,
+          color: product.color,
+          processor: product.processor,
+        )).toList();
+        _applyFilters();
         isLoading = false;
       });
     } catch (e) {
       setState(() {
         errorMessage = e.toString();
         isLoading = false;
+      });
+    }
+  }
+
+  void _applyFilters() {
+    final String skuQ = _filterSku.trim().toLowerCase();
+    final String nameQ = _filterName.trim().toLowerCase();
+    final String catQ = _filterCategory.trim().toLowerCase();
+
+    filteredItems = items.where((it) {
+      final bool matchesSku = skuQ.isEmpty || it.sku.toLowerCase().contains(skuQ);
+      final bool matchesName = nameQ.isEmpty || it.name.toLowerCase().contains(nameQ);
+      final bool matchesCat = catQ.isEmpty || it.category.toLowerCase().contains(catQ);
+      return matchesSku && matchesName && matchesCat;
+    }).toList();
+  }
+
+  void _openAdvancedSearch() async {
+    final result = await showDialog<_ItemsFilterResult>(
+      context: context,
+      builder: (context) {
+        final skuController = TextEditingController(text: _filterSku);
+        final nameController = TextEditingController(text: _filterName);
+        final categoryController = TextEditingController(text: _filterCategory);
+        return AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          title: const Text('Advanced Search', style: TextStyle(color: Colors.white)),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: skuController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Code (SKU)',
+                    labelStyle: TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: nameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Name',
+                    labelStyle: TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: categoryController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: const InputDecoration(
+                    labelText: 'Type (Category)',
+                    labelStyle: TextStyle(color: Colors.grey),
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context, _ItemsFilterResult(
+                  sku: skuController.text,
+                  name: nameController.text,
+                  category: categoryController.text,
+                ));
+              },
+              child: const Text('Apply', style: TextStyle(color: Color(0xFF3B82F6))),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        _filterSku = result.sku;
+        _filterName = result.name;
+        _filterCategory = result.category;
+        _applyFilters();
       });
     }
   }
@@ -111,7 +240,7 @@ class _ItemsPageState extends State<ItemsPage> {
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            onPressed: () {},
+            onPressed: _openAdvancedSearch,
             icon: const Icon(
               Icons.search,
               color: Colors.white,
@@ -264,7 +393,7 @@ class _ItemsPageState extends State<ItemsPage> {
       );
     }
 
-    if (items.isEmpty) {
+    if (filteredItems.isEmpty) {
       return const Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -285,7 +414,7 @@ class _ItemsPageState extends State<ItemsPage> {
             ),
             SizedBox(height: 8),
             Text(
-              'Add some products to get started',
+              'Adjust filters or add products to get started',
               style: TextStyle(
                 color: Color(0xFF64748B),
                 fontSize: 14,
@@ -302,25 +431,22 @@ class _ItemsPageState extends State<ItemsPage> {
       backgroundColor: const Color(0xFF1E293B),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: items.length,
+        itemCount: filteredItems.length,
         itemBuilder: (context, index) {
-          final item = items[index];
+          final item = filteredItems[index];
           return GestureDetector(
-            onTap: () {
-              Navigator.push(
+            onTap: () async {
+              final result = await Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => ItemDetailsPage(
-                    item: {
-                      'name': item.name,
-                      'sku': item.sku,
-                      'cost': item.cost,
-                      'price': item.price,
-                      'stock': item.stock.toString(),
-                    },
-                  ),
+                  builder: (context) => ItemDetailsPage(product: item.toProductModel()),
                 ),
               );
+              
+              // Refresh list if product was updated
+              if (result == true) {
+                _loadProducts();
+              }
             },
             child: Container(
               margin: const EdgeInsets.only(bottom: 12),
@@ -451,4 +577,16 @@ class _ItemsPageState extends State<ItemsPage> {
       return const Color(0xFFFF6B6B); // Red for very low stock
     }
   }
+}
+
+class _ItemsFilterResult {
+  final String sku;
+  final String name;
+  final String category;
+
+  _ItemsFilterResult({
+    required this.sku,
+    required this.name,
+    required this.category,
+  });
 }

@@ -1,19 +1,186 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
+import '../transactions/stock_in_page.dart';
+import '../transactions/stock_out_page.dart';
+import 'edit_product_page.dart';
+import '../../services/product_service.dart';
+import '../../apis/delete_product_api.dart';
+import '../../utils/snack_bar.dart';
 
 class ItemDetailsPage extends StatefulWidget {
-  final Map<String, String> item;
+  final ProductModel product;
 
-  const ItemDetailsPage({
-    super.key,
-    required this.item,
-  });
+  const ItemDetailsPage({super.key, required this.product});
 
   @override
   State<ItemDetailsPage> createState() => _ItemDetailsPageState();
 }
 
 class _ItemDetailsPageState extends State<ItemDetailsPage> {
+  void _handleEdit() async {
+    final result = await Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => EditProductPage(product: widget.product),
+      ),
+    );
+
+    // If product was updated, pop back to refresh the list
+    if (result == true && mounted) {
+      Navigator.pop(context, true);
+    }
+  }
+
+  void _handleDelete() async {
+    // Show confirmation dialog
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: Color(0xFF334155), width: 1),
+        ),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(
+                Icons.warning_amber_rounded,
+                color: Color(0xFFEF4444),
+                size: 24,
+              ),
+            ),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Text(
+                'Delete Product',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete "${widget.product.name}"?',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 15,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: const Color(0xFFEF4444).withOpacity(0.3),
+                  width: 1,
+                ),
+              ),
+              child: const Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Color(0xFFEF4444),
+                    size: 18,
+                  ),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'This action cannot be undone',
+                      style: TextStyle(
+                        color: Color(0xFFEF4444),
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(
+                color: Colors.grey,
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFEF4444),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+            ),
+            child: const Text(
+              'Delete',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+
+    // Show loading
+    if (mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(
+            valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
+          ),
+        ),
+      );
+    }
+
+    try {
+      await DeleteProductApi.deleteProduct(widget.product.id);
+      
+      // Clear product cache
+      ProductService.instance.clearCache();
+
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        showSuccessSnackTop(context, 'Product deleted successfully');
+        Navigator.pop(context, true); // Go back to list
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context); // Close loading dialog
+        showErrorSnackTop(context, e.toString().replaceFirst('Exception: ', ''));
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -24,10 +191,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
         elevation: 0,
         leading: IconButton(
           onPressed: () => Navigator.pop(context),
-          icon: const Icon(
-            Icons.arrow_back,
-            color: Colors.white,
-          ),
+          icon: const Icon(Icons.arrow_back, color: Colors.white),
         ),
         title: const Text(
           'Item',
@@ -39,22 +203,18 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
         ),
         actions: [
           IconButton(
-            onPressed: () {},
-            icon: const Icon(
-              Icons.edit,
-              color: Colors.white,
-            ),
+            onPressed: _handleEdit,
+            icon: const Icon(Icons.edit, color: Colors.white),
+            tooltip: 'Edit Product',
           ),
           IconButton(
-            onPressed: () {},
-            icon: const Icon(
-              Icons.more_vert,
-              color: Colors.white,
-            ),
+            onPressed: _handleDelete,
+            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+            tooltip: 'Delete Product',
           ),
         ],
       ),
-      
+
       // Scrollable Body
       body: Column(
         children: [
@@ -65,10 +225,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                colors: [
-                  Color(0xFF1E293B),
-                  Color(0xFF0F172A),
-                ],
+                colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
               ),
             ),
             child: Padding(
@@ -78,7 +235,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                 children: [
                   // Product Name
                   Text(
-                    widget.item['name'] ?? 'Microsoft Surface 4',
+                    widget.product.name,
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 24,
@@ -86,7 +243,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  
+
                   // Cost and Price Section
                   Row(
                     children: [
@@ -103,7 +260,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              widget.item['cost'] ?? '1000 USD',
+                              '${widget.product.cost} USD',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -126,7 +283,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                             ),
                             const SizedBox(height: 4),
                             Text(
-                              widget.item['price'] ?? '1400 USD',
+                              '${widget.product.price} USD',
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 18,
@@ -146,17 +303,23 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(8),
-                          child: Image.asset(
-                            'assets/images/sign_in_up_page/1.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(
-                                Icons.laptop,
-                                color: Colors.grey,
-                                size: 30,
-                              );
-                            },
-                          ),
+                          child: widget.product.image.isNotEmpty
+                              ? Image.network(
+                                  widget.product.image,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) {
+                                    return const Icon(
+                                      Icons.laptop,
+                                      color: Colors.grey,
+                                      size: 30,
+                                    );
+                                  },
+                                )
+                              : const Icon(
+                                  Icons.laptop,
+                                  color: Colors.grey,
+                                  size: 30,
+                                ),
                         ),
                       ),
                     ],
@@ -165,7 +328,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
               ),
             ),
           ),
-          
+
           // Scrollable Content
           Expanded(
             child: SingleChildScrollView(
@@ -176,14 +339,14 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                   // Basic Information
                   _buildInfoSection(),
                   const SizedBox(height: 24),
-                  
+
                   // Attributes Section
                   _buildAttributesSection(),
                   const SizedBox(height: 24),
-                  
+
                   // Transaction History Chart
                   _buildTransactionHistorySection(),
-                  
+
                   // Add some bottom padding to avoid overlap with bottom bar
                   const SizedBox(height: 100),
                 ],
@@ -192,17 +355,14 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
           ),
         ],
       ),
-      
+
       // Fixed Bottom Navigation Bar for Stock Actions
       bottomNavigationBar: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: const Color(0xFF0F172A),
           border: Border(
-            top: BorderSide(
-              color: Colors.grey.withOpacity(0.2),
-              width: 1,
-            ),
+            top: BorderSide(color: Colors.grey.withOpacity(0.2), width: 1),
           ),
           boxShadow: [
             BoxShadow(
@@ -212,9 +372,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
             ),
           ],
         ),
-        child: SafeArea(
-          child: _buildStockActionsSection(),
-        ),
+        child: SafeArea(child: _buildStockActionsSection()),
       ),
     );
   }
@@ -222,11 +380,11 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
   Widget _buildInfoSection() {
     return Column(
       children: [
-        _buildInfoRow('SKU', widget.item['sku'] ?? 'UEPYMGDO'),
+        _buildInfoRow('SKU', widget.product.sku),
         const SizedBox(height: 16),
-        _buildInfoRow('Barcode', '1234567895'),
+        _buildInfoRow('Barcode', '-'),
         const SizedBox(height: 16),
-        _buildInfoRow('Category', '-'),
+        _buildInfoRow('Category', widget.product.category.isNotEmpty ? widget.product.category : '-'),
       ],
     );
   }
@@ -235,13 +393,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          label,
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 16,
-          ),
-        ),
+        Text(label, style: const TextStyle(color: Colors.grey, fontSize: 16)),
         Text(
           value,
           style: const TextStyle(
@@ -267,15 +419,15 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
           ),
         ),
         const SizedBox(height: 16),
-        _buildInfoRow('RAM', '16'),
+        _buildInfoRow('RAM', widget.product.ram.isNotEmpty ? widget.product.ram : '-'),
         const SizedBox(height: 16),
-        _buildInfoRow('Date', 'Apr 30, 2024'),
+        _buildInfoRow('Date', widget.product.date.isNotEmpty ? widget.product.date : '-'),
         const SizedBox(height: 16),
-        _buildInfoRow('GPU', 'Integrated'),
+        _buildInfoRow('GPU', widget.product.gpu.isNotEmpty ? widget.product.gpu : '-'),
         const SizedBox(height: 16),
-        _buildInfoRow('Color', 'Platinum'),
+        _buildInfoRow('Color', widget.product.color.isNotEmpty ? widget.product.color : '-'),
         const SizedBox(height: 16),
-        _buildInfoRow('Processor', 'AMD Ryzen 7'),
+        _buildInfoRow('Processor', widget.product.processor.isNotEmpty ? widget.product.processor : '-'),
       ],
     );
   }
@@ -293,7 +445,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
           ),
         ),
         const SizedBox(height: 16),
-        
+
         // Chart Container
         Container(
           height: 200,
@@ -329,7 +481,15 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
                     reservedSize: 30,
                     interval: 1,
                     getTitlesWidget: (double value, TitleMeta meta) {
-                      const dates = ['23/8', '24/8', '25/8', '26/8', '27/8', '30/8', '29/8'];
+                      const dates = [
+                        '23/8',
+                        '24/8',
+                        '25/8',
+                        '26/8',
+                        '27/8',
+                        '30/8',
+                        '29/8',
+                      ];
                       if (value.toInt() >= 0 && value.toInt() < dates.length) {
                         return SideTitleWidget(
                           meta: meta,
@@ -399,7 +559,6 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
             ),
           ),
         ),
-
       ],
     );
   }
@@ -410,10 +569,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Colors.grey.withOpacity(0.2),
-          width: 1,
-        ),
+        border: Border.all(color: Colors.grey.withOpacity(0.2), width: 1),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -422,7 +578,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
           Row(
             children: [
               Text(
-                widget.item['stock'] ?? '80',
+                widget.product.quantity.toString(),
                 style: const TextStyle(
                   color: Color(0xFF3B82F6),
                   fontSize: 24,
@@ -432,10 +588,7 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
               const SizedBox(width: 8),
               const Text(
                 'Quantity',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                ),
+                style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
             ],
           ),
@@ -449,7 +602,10 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
               highlightColor: Colors.white.withOpacity(0.05),
               child: AnimatedContainer(
                 duration: const Duration(milliseconds: 200),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFF3B82F6),
                   borderRadius: BorderRadius.circular(8),
@@ -482,230 +638,158 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
-      builder: (context) => Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1E293B),
-          borderRadius: BorderRadius.only(
-            topLeft: Radius.circular(20),
-            topRight: Radius.circular(20),
+      builder: (BuildContext context) {
+        return Container(
+          decoration: const BoxDecoration(
+            color: Color(0xFF1E293B),
+            borderRadius: BorderRadius.only(
+              topLeft: Radius.circular(20),
+              topRight: Radius.circular(20),
+            ),
           ),
-        ),
-        padding: const EdgeInsets.all(20),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Handle bar
-              Container(
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: Colors.grey[600],
-                  borderRadius: BorderRadius.circular(2),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Handle bar
+                Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[600],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-              
-              // Title
-              const Text(
-                'Stock Actions',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                const SizedBox(height: 24),
+
+                // Title
+                const Text(
+                  'New Transaction',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              
-              // Stock In Button
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
+                const SizedBox(height: 24),
+
+                // Stock In Option
+                _buildTransactionOption(
+                  icon: Icons.keyboard_arrow_down,
+                  iconColor: const Color(0xFF3B82F6),
+                  backgroundColor: const Color(0xFF3B82F6).withOpacity(0.1),
+                  title: 'Stock In',
                   onTap: () {
                     Navigator.pop(context);
                     _handleStockIn();
                   },
-                  borderRadius: BorderRadius.circular(12),
-                  splashColor: Colors.green.withOpacity(0.1),
-                  highlightColor: Colors.green.withOpacity(0.05),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.green.withOpacity(0.3),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.green.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.green.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_downward,
-                            color: Colors.green,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Stock In',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Add inventory to stock',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(
-                          Icons.chevron_right,
-                          color: Colors.grey,
-                          size: 20,
-                        ),
-                      ],
-                    ),
-                  ),
                 ),
-              ),
-              
-              const SizedBox(height: 12),
-              
-              // Stock Out Button
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
+
+                const SizedBox(height: 16),
+
+                // Stock Out Option
+                _buildTransactionOption(
+                  icon: Icons.keyboard_arrow_up,
+                  iconColor: const Color(0xFFFF6B6B),
+                  backgroundColor: const Color(0xFFFF6B6B).withOpacity(0.1),
+                  title: 'Stock Out',
                   onTap: () {
                     Navigator.pop(context);
                     _handleStockOut();
                   },
-                  borderRadius: BorderRadius.circular(12),
-                  splashColor: Colors.red.withOpacity(0.1),
-                  highlightColor: Colors.red.withOpacity(0.05),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: Colors.red.withOpacity(0.3),
-                        width: 1,
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withOpacity(0.1),
-                          blurRadius: 4,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // Cancel Button
+                SizedBox(
+                  width: double.infinity,
+                  child: TextButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                     ),
-                    child: Row(
-                      children: [
-                        AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: Colors.red.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: const Icon(
-                            Icons.arrow_upward,
-                            color: Colors.red,
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Stock Out',
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                'Remove inventory from stock',
-                                style: TextStyle(
-                                  color: Colors.grey,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        const Icon(
-                          Icons.chevron_right,
-                          color: Colors.grey,
-                          size: 20,
-                        ),
-                      ],
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
                     ),
                   ),
                 ),
-              ),
-              
-              const SizedBox(height: 20),
-            ],
+
+                // Bottom padding for safe area
+                SizedBox(height: MediaQuery.of(context).padding.bottom),
+              ],
+            ),
           ),
+        );
+      },
+    );
+  }
+
+  Widget _buildTransactionOption({
+    required IconData icon,
+    required Color iconColor,
+    required Color backgroundColor,
+    required String title,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: const Color(0xFF334155), width: 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios, color: Colors.grey[600], size: 16),
+          ],
         ),
       ),
     );
   }
 
   void _handleStockIn() {
-    // TODO: Implement stock in functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Stock In functionality will be implemented'),
-        backgroundColor: Colors.green,
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const StockInPage()),
     );
   }
 
   void _handleStockOut() {
-    // TODO: Implement stock out functionality
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Stock Out functionality will be implemented'),
-        backgroundColor: Colors.red,
-      ),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const StockOutPage()),
     );
   }
 }
