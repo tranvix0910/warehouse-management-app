@@ -5,6 +5,7 @@ import '../../apis/product_api.dart';
 import '../../services/product_service.dart';
 import '../items/add_item_page.dart';
 import '../items/details_page.dart';
+import '../debug/firebase_debug_page.dart';
 
 class ItemModel {
   final String id;
@@ -137,7 +138,18 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(height: 30),
 
               // Environment Panel (Temperature & Humidity)
-              EnvironmentPanel(service: FirebaseEnvironmentService()),
+              GestureDetector(
+                onLongPress: () {
+                  // Long press để vào debug page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FirebaseDebugPage(),
+                    ),
+                  );
+                },
+                child: EnvironmentPanel(service: FirebaseEnvironmentService()),
+              ),
               const SizedBox(height: 20),
 
               // Action Buttons
