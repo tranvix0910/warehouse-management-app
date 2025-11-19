@@ -266,48 +266,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
         automaticallyImplyLeading: false,
-        actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(
-              Icons.menu,
-              color: Colors.white,
-            ),
-            color: const Color(0xFF1E293B),
-            onSelected: (value) {
-              // Handle menu selection
-            },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
-                value: 'filter',
-                child: Text(
-                  'Filter Transactions',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'export',
-                child: Text(
-                  'Export to CSV',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'date_range',
-                child: Text(
-                  'Date Range',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'settings',
-                child: Text(
-                  'Transaction Settings',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-        ],
+        actions: const [],
       ),
       body: _buildBody(),
        floatingActionButton: FloatingActionButton.extended(

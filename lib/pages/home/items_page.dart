@@ -253,59 +253,6 @@ class _ItemsPageState extends State<ItemsPage> {
               color: Colors.white,
             ),
           ),
-          PopupMenuButton<String>(
-            icon: const Icon(
-              Icons.more_vert,
-              color: Colors.white,
-            ),
-            color: const Color(0xFF1E293B),
-            onSelected: (value) async {
-              if (value == 'add') {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddItemPage(),
-                  ),
-                );
-                
-                // If a product was successfully added, refresh the list
-                if (result == true) {
-                  _loadProducts();
-                }
-              }
-              // Handle other menu selections
-            },
-            itemBuilder: (BuildContext context) => [
-              const PopupMenuItem<String>(
-                value: 'add',
-                child: Text(
-                  'Add New Item',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'export',
-                child: Text(
-                  'Export to CSV',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'filter',
-                child: Text(
-                  'Filter Items',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-              const PopupMenuItem<String>(
-                value: 'settings',
-                child: Text(
-                  'Item Settings',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
         ],
       ),
       body: _buildBody(),
