@@ -14,10 +14,14 @@ class TransactionsPage extends StatefulWidget {
   State<TransactionsPage> createState() => _TransactionsPageState();
 }
 
+enum _TransactionFilter { all, stockIn, stockOut }
+
 class _TransactionsPageState extends State<TransactionsPage> {
   List<Transaction> transactions = [];
+  List<Transaction> filteredTransactions = [];
   bool isLoading = true;
   String? errorMessage;
+  _TransactionFilter _filter = _TransactionFilter.all;
 
   @override
   void initState() {
@@ -38,21 +42,27 @@ class _TransactionsPageState extends State<TransactionsPage> {
       if (transactionResponse.success) {
         setState(() {
           transactions = transactionResponse.data;
+          _applyFilter();
           isLoading = false;
         });
       } else {
         setState(() {
           errorMessage = transactionResponse.message;
+          filteredTransactions = [];
           isLoading = false;
         });
       }
     } catch (e) {
       setState(() {
         errorMessage = e.toString();
+        filteredTransactions = [];
         isLoading = false;
       });
       if (mounted) {
-        showErrorSnackTop(context, 'Failed to load transactions: ${e.toString()}');
+        showErrorSnackTop(
+          context,
+          'Failed to load transactions: ${e.toString()}',
+        );
       }
     }
   }
@@ -64,6 +74,128 @@ class _TransactionsPageState extends State<TransactionsPage> {
     } catch (e) {
       return dateString;
     }
+  }
+
+  void _applyFilter() {
+    switch (_filter) {
+      case _TransactionFilter.all:
+        filteredTransactions = List.from(transactions);
+        break;
+      case _TransactionFilter.stockIn:
+        filteredTransactions = transactions
+            .where((txn) => txn.isStockIn)
+            .toList();
+        break;
+      case _TransactionFilter.stockOut:
+        filteredTransactions = transactions
+            .where((txn) => !txn.isStockIn)
+            .toList();
+        break;
+    }
+  }
+
+  void _changeFilter(_TransactionFilter newFilter) {
+    setState(() {
+      _filter = newFilter;
+      _applyFilter();
+    });
+  }
+
+  void _showFilterSheet() {
+    showModalBottomSheet<_TransactionFilter>(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        _TransactionFilter tempFilter = _filter;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Filter transactions',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setModalState(() {
+                            tempFilter = _TransactionFilter.all;
+                          });
+                        },
+                        child: const Text(
+                          'Reset',
+                          style: TextStyle(color: Color(0xFF94A3B8)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  ..._TransactionFilter.values.map(
+                    (option) => RadioListTile<_TransactionFilter>(
+                      value: option,
+                      groupValue: tempFilter,
+                      activeColor: const Color(0xFF3B82F6),
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        _filterLabel(option),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setModalState(() {
+                          tempFilter = value;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3B82F6),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(context, tempFilter);
+                      },
+                      child: const Text(
+                        'Apply filter',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                  SizedBox(height: MediaQuery.of(context).padding.bottom),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    ).then((value) {
+      if (value != null) {
+        _changeFilter(value);
+      }
+    });
   }
 
   void _showNewTransactionModal() {
@@ -95,7 +227,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Title
                 const Text(
                   'New Transaction',
@@ -106,7 +238,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
+
                 // Stock In Option
                 _buildTransactionOption(
                   icon: Icons.keyboard_arrow_down,
@@ -118,9 +250,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     _handleStockIn();
                   },
                 ),
-                
+
                 const SizedBox(height: 16),
-                
+
                 // Stock Out Option
                 _buildTransactionOption(
                   icon: Icons.keyboard_arrow_up,
@@ -132,9 +264,9 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     _handleStockOut();
                   },
                 ),
-                
+
                 const SizedBox(height: 24),
-                
+
                 // Cancel Button
                 SizedBox(
                   width: double.infinity,
@@ -145,14 +277,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
                     ),
                     child: const Text(
                       'Cancel',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
                     ),
                   ),
                 ),
-                
+
                 // Bottom padding for safe area
                 SizedBox(height: MediaQuery.of(context).padding.bottom),
               ],
@@ -179,10 +308,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         decoration: BoxDecoration(
           color: const Color(0xFF0F172A),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF334155),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0xFF334155), width: 1),
         ),
         child: Row(
           children: [
@@ -193,11 +319,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 color: backgroundColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                color: iconColor,
-                size: 24,
-              ),
+              child: Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -211,15 +333,11 @@ class _TransactionsPageState extends State<TransactionsPage> {
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.grey[600],
-              size: 16,
-            ),
+            Icon(Icons.arrow_forward_ios, color: Colors.grey[600], size: 16),
           ],
         ),
       ),
@@ -229,9 +347,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   void _handleStockIn() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const StockInPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const StockInPage()),
     ).then((_) {
       // Refresh transactions when returning from Stock In page
       _loadTransactions();
@@ -241,9 +357,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
   void _handleStockOut() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const StockOutPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const StockOutPage()),
     ).then((_) {
       // Refresh transactions when returning from Stock Out page
       _loadTransactions();
@@ -266,24 +380,23 @@ class _TransactionsPageState extends State<TransactionsPage> {
         backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
         automaticallyImplyLeading: false,
-        actions: const [],
+        actions: [
+          IconButton(
+            onPressed: _showFilterSheet,
+            icon: const Icon(Icons.filter_list, color: Colors.white),
+          ),
+        ],
       ),
       body: _buildBody(),
-       floatingActionButton: FloatingActionButton.extended(
-         onPressed: _showNewTransactionModal,
-         backgroundColor: const Color(0xFF3B82F6),
-         icon: const Icon(
-           Icons.add,
-           color: Colors.white,
-         ),
-         label: const Text(
-           'New Transaction',
-           style: TextStyle(
-             color: Colors.white,
-             fontWeight: FontWeight.w600,
-           ),
-         ),
-       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showNewTransactionModal,
+        backgroundColor: const Color(0xFF3B82F6),
+        icon: const Icon(Icons.add, color: Colors.white),
+        label: const Text(
+          'New Transaction',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
+      ),
     );
   }
 
@@ -301,11 +414,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'Failed to load transactions',
@@ -318,10 +427,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
             const SizedBox(height: 8),
             Text(
               errorMessage!,
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -338,7 +444,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
       );
     }
 
-    if (transactions.isEmpty) {
+    if (filteredTransactions.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -360,10 +466,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
             const SizedBox(height: 8),
             Text(
               'Start by creating your first transaction',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
             ),
           ],
         ),
@@ -376,19 +479,18 @@ class _TransactionsPageState extends State<TransactionsPage> {
       color: const Color(0xFF3B82F6),
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: transactions.length,
+        itemCount: filteredTransactions.length,
         itemBuilder: (context, index) {
-          final transaction = transactions[index];
+          final transaction = filteredTransactions[index];
           final isStockIn = transaction.isStockIn;
-          
+
           return GestureDetector(
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => TransactionDetailPage(
-                    transaction: transaction,
-                  ),
+                  builder: (context) =>
+                      TransactionDetailPage(transaction: transaction),
                 ),
               );
             },
@@ -398,10 +500,7 @@ class _TransactionsPageState extends State<TransactionsPage> {
               decoration: BoxDecoration(
                 color: const Color(0xFF1E293B),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: const Color(0xFF334155),
-                  width: 1,
-                ),
+                border: Border.all(color: const Color(0xFF334155), width: 1),
                 boxShadow: [
                   BoxShadow(
                     color: Colors.black.withOpacity(0.1),
@@ -411,103 +510,112 @@ class _TransactionsPageState extends State<TransactionsPage> {
                 ],
               ),
               child: Row(
-              children: [
-                // Transaction Type Icon and Quantity
-                Column(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: isStockIn 
-                          ? const Color(0xFF3B82F6).withOpacity(0.2)
-                          : const Color(0xFFFF6B6B).withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Icon(
-                        isStockIn 
-                          ? Icons.keyboard_arrow_down
-                          : Icons.keyboard_arrow_up,
-                        color: isStockIn 
-                          ? const Color(0xFF3B82F6)
-                          : const Color(0xFFFF6B6B),
-                        size: 24,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      '${isStockIn ? '+' : '-'}${transaction.quantity}',
-                      style: TextStyle(
-                        color: isStockIn 
-                          ? const Color(0xFF3B82F6)
-                          : const Color(0xFFFF6B6B),
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(width: 16),
-                // Transaction Details
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Transaction Type Icon and Quantity
+                  Column(
                     children: [
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: isStockIn
+                              ? const Color(0xFF3B82F6).withOpacity(0.2)
+                              : const Color(0xFFFF6B6B).withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(
+                          isStockIn
+                              ? Icons.keyboard_arrow_down
+                              : Icons.keyboard_arrow_up,
+                          color: isStockIn
+                              ? const Color(0xFF3B82F6)
+                              : const Color(0xFFFF6B6B),
+                          size: 24,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
                       Text(
-                        isStockIn ? 'Stock In' : 'Stock Out',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        '${isStockIn ? '+' : '-'}${transaction.quantity}',
+                        style: TextStyle(
+                          color: isStockIn
+                              ? const Color(0xFF3B82F6)
+                              : const Color(0xFFFF6B6B),
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Items: ${transaction.itemCount}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isStockIn 
-                          ? 'Supplier: ${transaction.partyName}'
-                          : 'Customer: ${transaction.partyName}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 14,
-                        ),
-                      ),
-                      if (transaction.note != null && transaction.note!.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(
-                          'Note: ${transaction.note}',
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
                     ],
                   ),
-                ),
-                // Date
-                Text(
-                  _formatDate(transaction.date),
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
+                  const SizedBox(width: 16),
+                  // Transaction Details
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          isStockIn ? 'Stock In' : 'Stock Out',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Items: ${transaction.itemCount}',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          isStockIn
+                              ? 'Supplier: ${transaction.partyName}'
+                              : 'Customer: ${transaction.partyName}',
+                          style: const TextStyle(
+                            color: Colors.grey,
+                            fontSize: 14,
+                          ),
+                        ),
+                        if (transaction.note != null &&
+                            transaction.note!.isNotEmpty) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Note: ${transaction.note}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  // Date
+                  Text(
+                    _formatDate(transaction.date),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
+                ],
+              ),
             ),
           );
         },
       ),
     );
+  }
+
+  String _filterLabel(_TransactionFilter filter) {
+    switch (filter) {
+      case _TransactionFilter.all:
+        return 'All transactions';
+      case _TransactionFilter.stockIn:
+        return 'Stock In only';
+      case _TransactionFilter.stockOut:
+        return 'Stock Out only';
+    }
   }
 }

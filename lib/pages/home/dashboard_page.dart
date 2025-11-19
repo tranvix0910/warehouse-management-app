@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import '../../apis/auth_api.dart';
 import '../../core/firebase_db_service.dart.dart';
+import '../../utils/snack_bar.dart';
 import '../../utils/token_storage.dart';
 import '../../apis/product_api.dart';
 import '../../services/product_service.dart';
@@ -432,10 +434,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         const SizedBox(height: 4),
                         const Text(
                           'Tap logout to end session',
-                          style: TextStyle(
-                            color: Colors.grey,
-                            fontSize: 13,
-                          ),
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
                         ),
                       ],
                     ),
@@ -461,10 +460,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   icon: const Icon(Icons.logout),
                   label: const Text(
                     'Logout',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
                   ),
                 ),
               ),
@@ -476,14 +472,19 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _handleLogout() async {
-    await TokenStorage.clearTokens();
-    await TokenStorage.clearUser();
-    if (!mounted) return;
-    Navigator.pushNamedAndRemoveUntil(
-      context,
-      '/signin',
-      (route) => false,
-    );
+    try {
+      await AuthApi.logout();
+    } catch (e) {
+      if (mounted) {
+        showErrorSnackTop(context, e.toString());
+      }
+    } finally {
+      await TokenStorage.clearTokens();
+      await TokenStorage.clearUser();
+      if (!mounted) return;
+      showSuccessSnackTop(context, 'Logged out successfully');
+      Navigator.pushNamedAndRemoveUntil(context, '/signin', (route) => false);
+    }
   }
 
   Widget _buildItemsSection() {
@@ -684,7 +685,8 @@ class _DashboardPageState extends State<DashboardPage> {
                   const SizedBox(height: 4),
                   Text(
                     'SKU: ${item.sku}',
-                    style: const TextStyle(color: Colors.grey, fontSize: 12),                  ),
+                    style: const TextStyle(color: Colors.grey, fontSize: 12),
+                  ),
                   const SizedBox(height: 4),
                   Row(
                     children: [
