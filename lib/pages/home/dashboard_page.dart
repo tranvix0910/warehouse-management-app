@@ -4,6 +4,7 @@ import '../../core/firebase_db_service.dart.dart';
 import '../../utils/snack_bar.dart';
 import '../../utils/token_storage.dart';
 import '../../apis/product_api.dart';
+import '../../apis/transaction_api.dart';
 import '../../services/product_service.dart';
 import '../items/add_item_page.dart';
 import '../items/details_page.dart';
@@ -89,12 +90,17 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   List<ItemModel> items = [];
   bool isLoading = true;
+  bool isLoadingTransactions = true;
   String? errorMessage;
+  int totalTrans = 0;
+  int totalStockIn = 0;
+  int totalStockOut = 0;
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
+    _loadTransactionInfo();
   }
 
   Future<void> _loadProducts() async {
@@ -119,6 +125,29 @@ class _DashboardPageState extends State<DashboardPage> {
       setState(() {
         errorMessage = e.toString();
         isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _loadTransactionInfo() async {
+    try {
+      setState(() {
+        isLoadingTransactions = true;
+      });
+
+      final response = await GetAllTransactionsApi.getInfoTransaction();
+      final data = response['data'];
+      
+      setState(() {
+        totalTrans = data['totalTrans'] ?? 0;
+        totalStockIn = data['totalStockIn'] ?? 0;
+        totalStockOut = data['totalStockOut'] ?? 0;
+        isLoadingTransactions = false;
+      });
+    } catch (e) {
+      print('Error loading transaction info: $e');
+      setState(() {
+        isLoadingTransactions = false;
       });
     }
   }
@@ -272,9 +301,9 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: _buildStatItem('276', 'Total')),
-              Expanded(child: _buildStatItem('374', 'Stock In')),
-              Expanded(child: _buildStatItem('98', 'Stock Out')),
+              Expanded(child: _buildStatItem(totalTrans.toString(), 'Total')),
+              Expanded(child: _buildStatItem(totalStockIn.toString(), 'Stock In')),
+              Expanded(child: _buildStatItem(totalStockOut.toString(), 'Stock Out')),
             ],
           ),
         ],
@@ -286,14 +315,24 @@ class _DashboardPageState extends State<DashboardPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        isLoadingTransactions
+            ? const SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  color: Color(0xFF3B82F6),
+                  strokeWidth: 3,
+                ),
+              )
+            : Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+        const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
@@ -367,6 +406,9 @@ class _DashboardPageState extends State<DashboardPage> {
       context,
       MaterialPageRoute(builder: (context) => const StockInPage()),
     );
+    // Refresh data after returning
+    _loadTransactionInfo();
+    _loadProducts();
   }
 
   Future<void> _navigateToStockOut() async {
@@ -374,6 +416,9 @@ class _DashboardPageState extends State<DashboardPage> {
       context,
       MaterialPageRoute(builder: (context) => const StockOutPage()),
     );
+    // Refresh data after returning
+    _loadTransactionInfo();
+    _loadProducts();
   }
 
   void _showAvatarOptions(String displayName, String? avatarURL) {
