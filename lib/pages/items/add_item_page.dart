@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import 'dart:typed_data';
+import 'package:firebase_database/firebase_database.dart';
 import '../../apis/add_product_api.dart';
 import '../../utils/snack_bar.dart';
 import '../../services/product_service.dart';
@@ -784,6 +785,46 @@ class _AddItemPageState extends State<AddItemPage> {
             const SizedBox(height: 16),
             
             // Manual input option
+            // Scan QR Code option
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF8B5CF6).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.qr_code_scanner,
+                  color: Color(0xFF8B5CF6),
+                  size: 20,
+                ),
+              ),
+              title: const Text(
+                'Scan QR Code',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: const Text(
+                'Read QR code from Firebase',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _scanWithQRCode();
+              },
+            ),
+            
+            const SizedBox(height: 16),
+            
+            // Manual RFID input option
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Container(
@@ -918,9 +959,21 @@ class _AddItemPageState extends State<AddItemPage> {
     );
   }
 
-  void _scanWithRFID() {
-    // Implement RFID scanning functionality
-    // For now, we'll simulate RFID scanning
+  void _scanWithRFID() async {
+    // Set check_rfid = true để bắt đầu scan
+    try {
+      final ref = FirebaseDatabase.instance.ref('sensors');
+      await ref.update({'check_rfid': true});
+      
+      print('🔵 RFID Scan started: check_rfid = true');
+    } catch (e) {
+      print('❌ Error setting check_rfid: $e');
+      return;
+    }
+    
+    bool isScanning = true;
+    
+    // Show dialog đang scan
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -934,7 +987,7 @@ class _AddItemPageState extends State<AddItemPage> {
             ),
             const SizedBox(height: 16),
             const Text(
-              'Scanning RFID Card...',
+              'Waiting for RFID...',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 16,
@@ -942,7 +995,7 @@ class _AddItemPageState extends State<AddItemPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Place RFID card near the reader',
+              'Scanning RFID card from Firebase',
               style: TextStyle(
                 color: Color(0xFF64748B),
                 fontSize: 12,
@@ -953,37 +1006,228 @@ class _AddItemPageState extends State<AddItemPage> {
       ),
     );
 
-    // Simulate scanning delay
-    Future.delayed(const Duration(seconds: 2), () {
-      Navigator.pop(context); // Close loading dialog
+    // Listen cho RFID data
+    final ref = FirebaseDatabase.instance.ref('sensors/rfid_uid');
+    late final subscription;
+    
+    subscription = ref.onValue.listen((event) async {
+      if (!isScanning || !mounted) return;
       
-      // Generate a realistic RFID UUID format
-      String generateRFIDUUID() {
-        final random = DateTime.now().millisecondsSinceEpoch;
-        final part1 = (random % 0xFFFFFFFF).toRadixString(16).padLeft(8, '0');
-        final part2 = ((random ~/ 1000) % 0xFFFF).toRadixString(16).padLeft(4, '0');
-        final part3 = ((random ~/ 10000) % 0xFFFF).toRadixString(16).padLeft(4, '0');
-        final part4 = ((random ~/ 100000) % 0xFFFF).toRadixString(16).padLeft(4, '0');
-        final part5 = ((random ~/ 1000000) % 0xFFFFFFFFFFFF).toRadixString(16).padLeft(12, '0');
+      if (event.snapshot.exists && event.snapshot.value != null) {
+        final rfidUid = event.snapshot.value.toString();
         
-        return '${part1}-${part2}-${part3}-${part4}-${part5}'.toUpperCase();
+        // Kiểm tra nếu có data hợp lệ
+        if (rfidUid.isNotEmpty && 
+            rfidUid != 'null' && 
+            rfidUid != '""' && 
+            rfidUid != "''") {
+          
+          print('✅ RFID Data received: $rfidUid');
+          
+          // Cancel subscription ngay
+          isScanning = false;
+          await subscription.cancel();
+          
+          // Set rfid_uid = "null" và check_rfid = false sau khi nhận được UID
+          try {
+            await FirebaseDatabase.instance.ref('sensors').update({
+              'rfid_uid': 'null',
+              'check_rfid': false,
+            });
+            print('🔴 RFID Scan stopped: rfid_uid = "null", check_rfid = false');
+          } catch (e) {
+            print('❌ Error setting rfid_uid and check_rfid: $e');
+          }
+          
+          // Close dialog safely
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+          
+          // Set SKU từ RFID
+          if (mounted) {
+            setState(() {
+              _rfidUUID = rfidUid;
+            });
+            
+            // Show success
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('✅ RFID Scanned: $_rfidUUID'),
+                backgroundColor: const Color(0xFF50C878),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
+    });
+    
+    // Timeout sau 30 giây
+    Future.delayed(const Duration(seconds: 30), () async {
+      if (!isScanning || !mounted) return;
+      
+      isScanning = false;
+      await subscription.cancel();
+      
+      // Set check_rfid = false
+      try {
+        await FirebaseDatabase.instance.ref('sensors').update({'check_rfid': false});
+        print('⏱️ Timeout: check_rfid = false');
+      } catch (e) {
+        print('❌ Error: $e');
       }
       
-      // Set the scanned RFID UUID
-      setState(() {
-        _rfidUUID = generateRFIDUUID();
-      });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('RFID UUID: $_rfidUUID'),
-          backgroundColor: const Color(0xFF50C878),
-          duration: const Duration(seconds: 3),
-        ),
-      );
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⏱️ RFID Scan timeout. Please try again.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
     });
   }
 
+  void _scanWithQRCode() async {
+    // Set check_qr = true để bắt đầu scan
+    try {
+      final ref = FirebaseDatabase.instance.ref('sensors');
+      await ref.update({'check_qr': true});
+      
+      print('🔵 QR Scan started: check_qr = true');
+    } catch (e) {
+      print('❌ Error setting check_qr: $e');
+      return;
+    }
+    
+    bool isScanning = true;
+    
+    // Show dialog đang scan
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(
+              color: Color(0xFF8B5CF6),
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Waiting for QR Code...',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Scanning QR code from Firebase',
+              style: TextStyle(
+                color: Color(0xFF64748B),
+                fontSize: 12,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // Listen cho QR data
+    final ref = FirebaseDatabase.instance.ref('sensors/qr_data');
+    late final subscription;
+    
+    subscription = ref.onValue.listen((event) async {
+      if (!isScanning || !mounted) return;
+      
+      if (event.snapshot.exists && event.snapshot.value != null) {
+        final qrData = event.snapshot.value.toString();
+        
+        // Kiểm tra nếu có data hợp lệ
+        if (qrData.isNotEmpty && 
+            qrData != 'null' && 
+            qrData != '""' && 
+            qrData != "''") {
+          
+          print('✅ QR Data received: $qrData');
+          
+          // Cancel subscription ngay
+          isScanning = false;
+          await subscription.cancel();
+          
+          // Set check_qr = false và qr_data = "null" để stop scan
+          try {
+            await FirebaseDatabase.instance.ref('sensors').update({
+              'check_qr': false,
+              'qr_data': 'null',
+            });
+            print('🔴 QR Scan stopped: check_qr = false, qr_data = "null"');
+          } catch (e) {
+            print('❌ Error setting check_qr: $e');
+          }
+          
+          // Close dialog safely
+          if (mounted && Navigator.canPop(context)) {
+            Navigator.pop(context);
+          }
+          
+          // Set SKU từ QR code
+          if (mounted) {
+            setState(() {
+              _rfidUUID = qrData;
+            });
+            
+            // Show success
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('✅ QR Code Scanned: $_rfidUUID'),
+                backgroundColor: const Color(0xFF8B5CF6),
+                duration: const Duration(seconds: 3),
+              ),
+            );
+          }
+        }
+      }
+    });
+    
+    // Timeout sau 30 giây
+    Future.delayed(const Duration(seconds: 30), () async {
+      if (!isScanning || !mounted) return;
+      
+      isScanning = false;
+      await subscription.cancel();
+      
+      // Set check_qr = false và qr_data = "null"
+      try {
+        await FirebaseDatabase.instance.ref('sensors').update({
+          'check_qr': false,
+          'qr_data': 'null',
+        });
+        print('⏱️ Timeout: check_qr = false, qr_data = "null"');
+      } catch (e) {
+        print('❌ Error: $e');
+      }
+      
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+        
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('⏱️ QR Scan timeout. Please try again.'),
+            backgroundColor: Colors.orange,
+            duration: Duration(seconds: 3),
+          ),
+        );
+      }
+    });
+  }
+  
   void _manualRFIDInput() {
     TextEditingController rfidController = TextEditingController();
     
