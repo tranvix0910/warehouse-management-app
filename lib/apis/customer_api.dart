@@ -1,10 +1,16 @@
 import 'package:dio/dio.dart';
 import 'api_client.dart';
+import '../models/pagination_models.dart';
 
 class GetAllCustomersApi {
-  static Future<Map<String, dynamic>> getAllCustomers() async {
+  static Future<Map<String, dynamic>> getAllCustomers({
+    PaginationParams? params,
+  }) async {
     try {
-      final response = await ApiClient.dio.get('/customers');
+      final response = await ApiClient.dio.get(
+        '/customers',
+        queryParameters: params?.toQueryParams(),
+      );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         return response.data;
@@ -29,5 +35,19 @@ class GetAllCustomersApi {
       }
       throw Exception('Network error: ${e.message}');
     }
+  }
+
+  static Future<Map<String, dynamic>> getCustomersPaginated({
+    int page = 1,
+    int limit = 20,
+    String? search,
+  }) async {
+    return getAllCustomers(
+      params: PaginationParams(
+        page: page,
+        limit: limit,
+        search: search,
+      ),
+    );
   }
 }
