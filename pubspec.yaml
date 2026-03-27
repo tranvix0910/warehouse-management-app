@@ -21,8 +21,52 @@ dependencies:
   dio: ^5.9.0
   image_picker: ^1.1.2
   intl: ^0.20.2
+  flutter_dotenv: ^5.2.1
+  
+  # State Management
+  flutter_riverpod: ^2.6.1
+  
+  # Export CSV/PDF
+  csv: ^6.0.0
+  pdf: ^3.11.1
+  printing: ^5.13.3
+  path_provider: ^2.1.5
+  share_plus: ^10.1.4
+  open_file: ^3.5.10
+  
+  # Push Notification
+  firebase_messaging: ^15.2.4
+  flutter_local_notifications: ^18.0.1
+  
+  # Barcode/QR Scanner
+  mobile_scanner: ^6.0.2
+  
+  # Offline Database
+  drift: ^2.22.1
+  sqlite3_flutter_libs: ^0.5.28
+  connectivity_plus: ^6.1.1
+  
+  # Image Cache
+  cached_network_image: ^3.4.1
+  
+  # Localization
+  flutter_localizations:
+    sdk: flutter
+  
+  # File Import
+  file_picker: ^8.1.6
+  excel: ^4.0.6
+  
+  # Markdown Rendering
+  flutter_markdown: ^0.7.4+3
+  
+  # URL Launcher
+  url_launcher: ^6.3.1
 
 dev_dependencies:
+  # Testing
+  mockito: ^5.4.5
+  build_runner: ^2.4.14
   flutter_test:
     sdk: flutter
 
@@ -34,6 +78,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/images/
     - assets/images/welcome_page/
     - assets/images/sign_in_up_page/
