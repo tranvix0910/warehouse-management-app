@@ -73,6 +73,8 @@ class ItemModel {
   }
 }
 
+enum _SortOption { none, priceLowHigh, priceHighLow, nameAZ, nameZA }
+
 class ItemsPage extends StatefulWidget {
   const ItemsPage({super.key});
 
@@ -97,6 +99,7 @@ class _ItemsPageState extends State<ItemsPage> {
   String _filterName = '';
   String _filterCategory = '';
   String _searchQuery = '';
+  _SortOption _sortOption = _SortOption.none;
 
   @override
   void initState() {
@@ -214,19 +217,49 @@ class _ItemsPageState extends State<ItemsPage> {
   }
 
   List<ItemModel> get filteredItems {
+    List<ItemModel> result;
+    
     if (_filterSku.isEmpty && _filterName.isEmpty && _filterCategory.isEmpty) {
-      return _items;
+      result = List.from(_items);
+    } else {
+      result = _items.where((it) {
+        final bool matchesSku = _filterSku.isEmpty || 
+            it.sku.toLowerCase().contains(_filterSku.toLowerCase());
+        final bool matchesName = _filterName.isEmpty || 
+            it.name.toLowerCase().contains(_filterName.toLowerCase());
+        final bool matchesCat = _filterCategory.isEmpty || 
+            it.category.toLowerCase().contains(_filterCategory.toLowerCase());
+        return matchesSku && matchesName && matchesCat;
+      }).toList();
     }
     
-    return _items.where((it) {
-      final bool matchesSku = _filterSku.isEmpty || 
-          it.sku.toLowerCase().contains(_filterSku.toLowerCase());
-      final bool matchesName = _filterName.isEmpty || 
-          it.name.toLowerCase().contains(_filterName.toLowerCase());
-      final bool matchesCat = _filterCategory.isEmpty || 
-          it.category.toLowerCase().contains(_filterCategory.toLowerCase());
-      return matchesSku && matchesName && matchesCat;
-    }).toList();
+    // Apply sorting
+    switch (_sortOption) {
+      case _SortOption.none:
+        break;
+      case _SortOption.priceLowHigh:
+        result.sort((a, b) {
+          final double priceA = double.tryParse(a.price.replaceAll(' USD', '')) ?? 0;
+          final double priceB = double.tryParse(b.price.replaceAll(' USD', '')) ?? 0;
+          return priceA.compareTo(priceB);
+        });
+        break;
+      case _SortOption.priceHighLow:
+        result.sort((a, b) {
+          final double priceA = double.tryParse(a.price.replaceAll(' USD', '')) ?? 0;
+          final double priceB = double.tryParse(b.price.replaceAll(' USD', '')) ?? 0;
+          return priceB.compareTo(priceA);
+        });
+        break;
+      case _SortOption.nameAZ:
+        result.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+        break;
+      case _SortOption.nameZA:
+        result.sort((a, b) => b.name.toLowerCase().compareTo(a.name.toLowerCase()));
+        break;
+    }
+    
+    return result;
   }
 
   void _openAdvancedSearch() async {
@@ -305,6 +338,117 @@ class _ItemsPageState extends State<ItemsPage> {
     }
   }
 
+  void _openSortSheet() async {
+    final result = await showModalBottomSheet<_SortOption>(
+      context: context,
+      backgroundColor: const Color(0xFF1E293B),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        _SortOption tempSort = _sortOption;
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'Sort items',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setModalState(() {
+                            tempSort = _SortOption.none;
+                          });
+                        },
+                        child: const Text(
+                          'Reset',
+                          style: TextStyle(color: Color(0xFF94A3B8)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  ..._SortOption.values.map(
+                    (option) => RadioListTile<_SortOption>(
+                      value: option,
+                      groupValue: tempSort,
+                      activeColor: const Color(0xFF3B82F6),
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(
+                        _sortOptionLabel(option),
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      onChanged: (value) {
+                        if (value == null) return;
+                        setModalState(() {
+                          tempSort = value;
+                        });
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF3B82F6),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      onPressed: () => Navigator.pop(context, tempSort),
+                      child: const Text(
+                        'Apply sort',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+
+    if (result != null) {
+      setState(() {
+        _sortOption = result;
+      });
+    }
+  }
+
+  String _sortOptionLabel(_SortOption option) {
+    switch (option) {
+      case _SortOption.none:
+        return 'Default order';
+      case _SortOption.priceLowHigh:
+        return 'Price: low to high';
+      case _SortOption.priceHighLow:
+        return 'Price: high to low';
+      case _SortOption.nameAZ:
+        return 'Name: A to Z';
+      case _SortOption.nameZA:
+        return 'Name: Z to A';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -324,17 +468,15 @@ class _ItemsPageState extends State<ItemsPage> {
         actions: [
           IconButton(
             onPressed: _openAdvancedSearch,
-            icon: const Icon(
-              Icons.search,
-              color: Colors.white,
-            ),
+            icon: const Icon(Icons.search, color: Colors.white),
+          ),
+          IconButton(
+            onPressed: _openSortSheet,
+            icon: const Icon(Icons.sort, color: Colors.white),
           ),
           IconButton(
             onPressed: () => _loadProducts(refresh: true),
-            icon: const Icon(
-              Icons.refresh,
-              color: Colors.white,
-            ),
+            icon: const Icon(Icons.refresh, color: Colors.white),
           ),
           PopupMenuButton<String>(
             icon: const Icon(

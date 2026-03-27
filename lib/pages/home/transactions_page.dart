@@ -78,7 +78,6 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
                 const Text(
                   'New Transaction',
                   style: TextStyle(
@@ -88,7 +87,6 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                   ),
                 ),
                 const SizedBox(height: 24),
-                
                 _buildTransactionOption(
                   icon: Icons.keyboard_arrow_down,
                   iconColor: const Color(0xFF3B82F6),
@@ -99,9 +97,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                     _handleStockIn();
                   },
                 ),
-                
                 const SizedBox(height: 16),
-                
                 _buildTransactionOption(
                   icon: Icons.keyboard_arrow_up,
                   iconColor: const Color(0xFFFF6B6B),
@@ -112,9 +108,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                     _handleStockOut();
                   },
                 ),
-                
                 const SizedBox(height: 24),
-                
                 SizedBox(
                   width: double.infinity,
                   child: TextButton(
@@ -124,14 +118,10 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                     ),
                     child: const Text(
                       'Cancel',
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 16,
-                      ),
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
                     ),
                   ),
                 ),
-                
                 SizedBox(height: MediaQuery.of(context).padding.bottom),
               ],
             ),
@@ -157,10 +147,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
         decoration: BoxDecoration(
           color: const Color(0xFF0F172A),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF334155),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0xFF334155), width: 1),
         ),
         child: Row(
           children: [
@@ -171,11 +158,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                 color: backgroundColor,
                 borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(
-                icon,
-                color: iconColor,
-                size: 24,
-              ),
+              child: Icon(icon, color: iconColor, size: 24),
             ),
             const SizedBox(width: 16),
             Expanded(
@@ -189,15 +172,11 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
                     ),
-                  )
+                  ),
                 ],
               ),
             ),
-            Icon(
-              Icons.arrow_forward_ios,
-              color: Colors.grey[600],
-              size: 16,
-            ),
+            Icon(Icons.arrow_forward_ios, color: Colors.grey[600], size: 16),
           ],
         ),
       ),
@@ -207,9 +186,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
   void _handleStockIn() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const StockInPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const StockInPage()),
     ).then((_) {
       ref.read(transactionNotifierProvider.notifier).loadTransactions(refresh: true);
     });
@@ -218,9 +195,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
   void _handleStockOut() {
     Navigator.push(
       context,
-      MaterialPageRoute(
-        builder: (context) => const StockOutPage(),
-      ),
+      MaterialPageRoute(builder: (context) => const StockOutPage()),
     ).then((_) {
       ref.read(transactionNotifierProvider.notifier).loadTransactions(refresh: true);
     });
@@ -245,7 +220,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
         elevation: 0,
         automaticallyImplyLeading: false,
         actions: [
-          if (transactionState.dateRange != null)
+          if (transactionState.dateRange != null || transactionState.typeFilter != null)
             IconButton(
               onPressed: () {
                 ref.read(transactionNotifierProvider.notifier).clearFilters();
@@ -254,10 +229,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
               tooltip: 'Clear filters',
             ),
           PopupMenuButton<String>(
-            icon: const Icon(
-              Icons.menu,
-              color: Colors.white,
-            ),
+            icon: const Icon(Icons.menu, color: Colors.white),
             color: const Color(0xFF1E293B),
             onSelected: (value) => _handleMenuAction(value),
             itemBuilder: (BuildContext context) => [
@@ -347,16 +319,10 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
       floatingActionButton: FloatingActionButton.extended(
         onPressed: _showNewTransactionModal,
         backgroundColor: const Color(0xFF3B82F6),
-        icon: const Icon(
-          Icons.add,
-          color: Colors.white,
-        ),
+        icon: const Icon(Icons.add, color: Colors.white),
         label: const Text(
           'New Transaction',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w600,
-          ),
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
         ),
       ),
     );
@@ -539,7 +505,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
   }
 
   Widget _buildBody(TransactionState transactionState) {
-    if (transactionState.isLoading) {
+    if (transactionState.isLoading && transactionState.filteredTransactions.isEmpty) {
       return const Center(
         child: CircularProgressIndicator(
           valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF3B82F6)),
@@ -547,16 +513,12 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
       );
     }
 
-    if (transactionState.errorMessage != null) {
+    if (transactionState.errorMessage != null && transactionState.filteredTransactions.isEmpty) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.error_outline,
-              size: 64,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.error_outline, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               'Failed to load transactions',
@@ -569,10 +531,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
             const SizedBox(height: 8),
             Text(
               transactionState.errorMessage!,
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 24),
@@ -596,11 +555,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.receipt_long_outlined,
-              size: 64,
-              color: Colors.grey[400],
-            ),
+            Icon(Icons.receipt_long_outlined, size: 64, color: Colors.grey[400]),
             const SizedBox(height: 16),
             Text(
               transactionState.dateRange != null || transactionState.typeFilter != null
@@ -617,10 +572,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
               transactionState.dateRange != null || transactionState.typeFilter != null
                   ? 'Try adjusting your filters'
                   : 'Start by creating your first transaction',
-              style: TextStyle(
-                color: Colors.grey[500],
-                fontSize: 14,
-              ),
+              style: TextStyle(color: Colors.grey[500], fontSize: 14),
             ),
             if (transactionState.dateRange != null || transactionState.typeFilter != null) ...[
               const SizedBox(height: 16),
@@ -764,9 +716,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
         Navigator.push(
           context,
           MaterialPageRoute(
-            builder: (context) => TransactionDetailPage(
-              transaction: transaction,
-            ),
+            builder: (context) => TransactionDetailPage(transaction: transaction),
           ),
         );
       },
@@ -776,10 +726,7 @@ class _TransactionsPageState extends ConsumerState<TransactionsPage> {
         decoration: BoxDecoration(
           color: const Color(0xFF1E293B),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: const Color(0xFF334155),
-            width: 1,
-          ),
+          border: Border.all(color: const Color(0xFF334155), width: 1),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.1),
