@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../providers/providers.dart';
-import '../../providers/theme_provider.dart';
 import '../../l10n/app_localizations.dart';
 import '../../services/notification_service.dart' hide debugPrint;
 import '../../services/role_service.dart';
@@ -64,7 +63,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
   Widget build(BuildContext context) {
     final notificationSettings = ref.watch(notificationSettingsProvider);
     final authState = ref.watch(authNotifierProvider);
-    final themeState = ref.watch(themeProvider);
     final localeState = ref.watch(localeProvider);
 
     return Scaffold(
@@ -523,7 +521,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             const SizedBox(height: 24),
             
             const Text(
-              'Appearance',
+              'Language',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 18,
@@ -532,8 +530,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ),
             const SizedBox(height: 12),
             
-            _buildThemeSelector(themeState),
-            const SizedBox(height: 8),
             _buildLanguageSelector(localeState),
             
             const SizedBox(height: 24),
@@ -1078,105 +1074,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               ],
             ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildThemeSelector(ThemeState themeState) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                themeState.isDark ? Icons.dark_mode : Icons.light_mode,
-                color: const Color(0xFFFFD93D),
-                size: 20,
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Theme',
-                style: TextStyle(
-                  color: Colors.white70,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              _buildThemeOption(
-                label: 'Light',
-                icon: Icons.light_mode,
-                isSelected: themeState.themeMode == AppThemeMode.light,
-                onTap: () => ref.read(themeProvider.notifier).setThemeMode(AppThemeMode.light),
-              ),
-              const SizedBox(width: 12),
-              _buildThemeOption(
-                label: 'Dark',
-                icon: Icons.dark_mode,
-                isSelected: themeState.themeMode == AppThemeMode.dark,
-                onTap: () => ref.read(themeProvider.notifier).setThemeMode(AppThemeMode.dark),
-              ),
-              const SizedBox(width: 12),
-              _buildThemeOption(
-                label: 'System',
-                icon: Icons.settings_brightness,
-                isSelected: themeState.themeMode == AppThemeMode.system,
-                onTap: () => ref.read(themeProvider.notifier).setThemeMode(AppThemeMode.system),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildThemeOption({
-    required String label,
-    required IconData icon,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 12),
-          decoration: BoxDecoration(
-            color: isSelected ? _withOpacity(const Color(0xFF3B82F6), 0.2) : const Color(0xFF0F172A),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF334155),
-            ),
-          ),
-          child: Column(
-            children: [
-              Icon(
-                icon,
-                color: isSelected ? const Color(0xFF3B82F6) : Colors.grey,
-                size: 20,
-              ),
-              const SizedBox(height: 4),
-              Text(
-                label,
-                style: TextStyle(
-                  color: isSelected ? const Color(0xFF3B82F6) : Colors.grey,
-                  fontSize: 12,
-                  fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                ),
-              ),
-            ],
-          ),
         ),
       ),
     );

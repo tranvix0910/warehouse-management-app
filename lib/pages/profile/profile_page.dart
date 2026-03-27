@@ -1,7 +1,7 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
 import '../../providers/providers.dart';
 import '../../services/role_service.dart';
 import '../../apis/user_api.dart';
@@ -25,7 +25,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
   bool _isLoading = false;
   bool _isEditing = false;
   String? _avatarUrl;
-  File? _newAvatarFile;
+  XFile? _newAvatarXFile;
+  Uint8List? _newAvatarBytes;
   
   final ImagePicker _picker = ImagePicker();
   final RoleService _roleService = RoleService();
@@ -77,8 +78,10 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
     
     if (image != null) {
+      final bytes = await image.readAsBytes();
       setState(() {
-        _newAvatarFile = File(image.path);
+        _newAvatarXFile = image;
+        _newAvatarBytes = bytes;
       });
     }
   }
@@ -89,8 +92,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     setState(() => _isLoading = true);
     
     try {
-      if (_newAvatarFile != null) {
-        await UserApi.uploadAvatar(_newAvatarFile!.path);
+      if (_newAvatarXFile != null) {
+        await UserApi.uploadAvatarXFile(_newAvatarXFile!);
       }
       
       await UserApi.updateProfile(
@@ -111,7 +114,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         showSuccessSnackTop(context, 'Profile updated successfully');
         setState(() {
           _isEditing = false;
-          _newAvatarFile = null;
+          _newAvatarXFile = null;
+          _newAvatarBytes = null;
         });
       }
     } catch (e) {
@@ -312,7 +316,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               icon: const Icon(Icons.close, color: Colors.grey),
               onPressed: () => setState(() {
                 _isEditing = false;
-                _newAvatarFile = null;
+                _newAvatarXFile = null;
+                _newAvatarBytes = null;
                 _loadProfile();
               }),
             ),
@@ -355,8 +360,8 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
               border: Border.all(color: const Color(0xFF3B82F6), width: 3),
             ),
             child: ClipOval(
-              child: _newAvatarFile != null
-                  ? Image.file(_newAvatarFile!, fit: BoxFit.cover)
+              child: _newAvatarBytes != null
+                  ? Image.memory(_newAvatarBytes!, fit: BoxFit.cover)
                   : _avatarUrl != null && _avatarUrl!.isNotEmpty
                       ? Image.network(
                           _avatarUrl!,

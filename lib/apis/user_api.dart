@@ -1,4 +1,6 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:image_picker/image_picker.dart';
 import 'api_client.dart';
 
 class UserApi {
@@ -39,6 +41,41 @@ class UserApi {
     try {
       final formData = FormData.fromMap({
         'avatar': await MultipartFile.fromFile(filePath, filename: 'avatar.jpg'),
+      });
+
+      final response = await ApiClient.dio.post(
+        '/users/avatar',
+        data: formData,
+        options: Options(contentType: 'multipart/form-data'),
+      );
+      return response.data;
+    } on DioException catch (e) {
+      if (e.response != null) {
+        throw Exception(e.response?.data['message'] ?? 'Failed to upload avatar');
+      }
+      throw Exception('Network error: ${e.message}');
+    }
+  }
+
+  static Future<Map<String, dynamic>> uploadAvatarXFile(XFile xFile) async {
+    try {
+      late MultipartFile multipartFile;
+      
+      if (kIsWeb) {
+        final bytes = await xFile.readAsBytes();
+        multipartFile = MultipartFile.fromBytes(
+          bytes,
+          filename: xFile.name.isNotEmpty ? xFile.name : 'avatar.jpg',
+        );
+      } else {
+        multipartFile = await MultipartFile.fromFile(
+          xFile.path,
+          filename: xFile.name.isNotEmpty ? xFile.name : 'avatar.jpg',
+        );
+      }
+
+      final formData = FormData.fromMap({
+        'avatar': multipartFile,
       });
 
       final response = await ApiClient.dio.post(

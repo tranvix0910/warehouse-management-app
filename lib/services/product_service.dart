@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import '../apis/product_api.dart';
 import '../models/pagination_models.dart';
+import 'offline_database.dart';
 
 class ProductModel {
   final String id;
@@ -52,17 +54,17 @@ class ProductModel {
 
   Map<String, dynamic> toJson() {
     return {
-      'id': id,
-      'name': name,
-      'sku': sku,
+      '_id': id,
+      'productName': name,
+      'SKU': sku,
       'cost': cost,
       'price': price,
       'quantity': quantity,
       'image': image,
       'category': category,
-      'ram': ram,
+      'RAM': ram,
       'date': date,
-      'gpu': gpu,
+      'GPU': gpu,
       'color': color,
       'processor': processor,
     };
@@ -75,12 +77,13 @@ class ProductService {
   
   ProductService._();
 
+  final _offlineDb = OfflineDatabase();
   List<ProductModel>? _cachedProducts;
   DateTime? _lastFetchTime;
   static const Duration _cacheValidDuration = Duration(minutes: 5);
 
   Future<List<ProductModel>> getProducts({bool forceRefresh = false}) async {
-    // Return cached data if valid and not forcing refresh
+    // Return RAM cached data if valid and not forcing refresh
     if (!forceRefresh && 
         _cachedProducts != null && 
         _lastFetchTime != null &&
@@ -88,21 +91,46 @@ class ProductService {
       return _cachedProducts!;
     }
 
-    try {
-      final response = await GetAllProductsApi.getAllProducts();
-      final List<dynamic> productsData = response['data'] ?? [];
-      
-      _cachedProducts = productsData.map((json) => ProductModel.fromJson(json)).toList();
-      _lastFetchTime = DateTime.now();
-      
-      return _cachedProducts!;
-    } catch (e) {
-      // If we have cached data, return it even if refresh failed
-      if (_cachedProducts != null) {
+    final isOnline = await _offlineDb.isOnline();
+
+    if (isOnline) {
+      try {
+        final response = await GetAllProductsApi.getAllProducts();
+        final List<dynamic> productsData = response['data'] ?? [];
+        
+        _cachedProducts = productsData.map((json) => ProductModel.fromJson(json)).toList();
+        _lastFetchTime = DateTime.now();
+        
+        // Cache to offline storage
+        await _offlineDb.cacheProducts(_cachedProducts!);
+        
         return _cachedProducts!;
+      } catch (e) {
+        debugPrint('API error, trying offline cache: $e');
+        // If API fails, try offline cache
+        return await _getOfflineProducts();
       }
-      rethrow;
+    } else {
+      // Offline mode - get cached data
+      debugPrint('Offline mode - loading cached products');
+      return await _getOfflineProducts();
     }
+  }
+
+  Future<List<ProductModel>> _getOfflineProducts() async {
+    // Try RAM cache first
+    if (_cachedProducts != null) {
+      return _cachedProducts!;
+    }
+    
+    // Then try offline storage
+    final offlineProducts = await _offlineDb.getCachedProducts();
+    if (offlineProducts.isNotEmpty) {
+      _cachedProducts = offlineProducts;
+      return offlineProducts;
+    }
+    
+    throw Exception('No cached data available. Please connect to the internet.');
   }
 
   void clearCache() {
@@ -124,10 +152,50 @@ class ProductService {
   Future<PaginatedResponse<ProductModel>> getProductsPaginated(
     PaginationParams params,
   ) async {
+    final isOnline = await _offlineDb.isOnline();
+    
+    if (!isOnline) {
+      // Offline mode - return cached products with manual pagination
+      final cachedProducts = await _offlineDb.getCachedProducts();
+      if (cachedProducts.isEmpty) {
+        return PaginatedResponse(
+          success: false,
+          message: 'No cached data available',
+          data: [],
+        );
+      }
+      
+      final page = params.page ?? 1;
+      final limit = params.limit ?? 20;
+      final start = (page - 1) * limit;
+      final end = start + limit;
+      final paginatedProducts = cachedProducts.sublist(
+        start.clamp(0, cachedProducts.length),
+        end.clamp(0, cachedProducts.length),
+      );
+      
+      return PaginatedResponse(
+        success: true,
+        message: 'Offline data',
+        data: paginatedProducts,
+        pagination: PaginationInfo(
+          page: page,
+          limit: limit,
+          total: cachedProducts.length,
+          totalPages: (cachedProducts.length / limit).ceil(),
+        ),
+      );
+    }
+    
     try {
       final response = await GetAllProductsApi.getAllProducts(params: params);
       final List<dynamic> productsData = response['data'] ?? [];
       final products = productsData.map((json) => ProductModel.fromJson(json)).toList();
+      
+      // Cache all products when fetching first page
+      if (params.page == 1) {
+        await _offlineDb.cacheProducts(products);
+      }
       
       PaginationInfo? pagination;
       if (response['pagination'] != null) {
@@ -141,11 +209,63 @@ class ProductService {
         pagination: pagination,
       );
     } catch (e) {
+      // Fallback to cached data
+      final cachedProducts = await _offlineDb.getCachedProducts();
+      if (cachedProducts.isNotEmpty) {
+        return PaginatedResponse(
+          success: true,
+          message: 'Using cached data',
+          data: cachedProducts,
+        );
+      }
       return PaginatedResponse(
         success: false,
         message: e.toString(),
         data: [],
       );
+    }
+  }
+
+  Future<void> createProductOffline(Map<String, dynamic> productData) async {
+    final isOnline = await _offlineDb.isOnline();
+    
+    if (!isOnline) {
+      await _offlineDb.addPendingAction(PendingAction(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: PendingActionType.createProduct,
+        data: productData,
+        createdAt: DateTime.now(),
+      ));
+      debugPrint('Product creation queued for sync');
+    }
+  }
+
+  Future<void> updateProductOffline(String productId, Map<String, dynamic> productData) async {
+    final isOnline = await _offlineDb.isOnline();
+    
+    if (!isOnline) {
+      productData['_id'] = productId;
+      await _offlineDb.addPendingAction(PendingAction(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: PendingActionType.updateProduct,
+        data: productData,
+        createdAt: DateTime.now(),
+      ));
+      debugPrint('Product update queued for sync');
+    }
+  }
+
+  Future<void> deleteProductOffline(String productId) async {
+    final isOnline = await _offlineDb.isOnline();
+    
+    if (!isOnline) {
+      await _offlineDb.addPendingAction(PendingAction(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: PendingActionType.deleteProduct,
+        data: {'_id': productId},
+        createdAt: DateTime.now(),
+      ));
+      debugPrint('Product deletion queued for sync');
     }
   }
 }

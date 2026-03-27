@@ -1,8 +1,7 @@
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import 'dart:typed_data';
 import 'package:firebase_database/firebase_database.dart';
 import '../../apis/add_product_api.dart';
 import '../../utils/snack_bar.dart';
@@ -34,6 +33,7 @@ class _AddItemPageState extends State<AddItemPage> {
   
   // Image picker variables
   XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
   final ImagePicker _picker = ImagePicker();
 
   @override
@@ -182,9 +182,9 @@ class _AddItemPageState extends State<AddItemPage> {
             child: _selectedImage != null
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: kIsWeb
-                        ? Image.network(
-                            _selectedImage!.path,
+                    child: _selectedImageBytes != null
+                        ? Image.memory(
+                            _selectedImageBytes!,
                             width: 116,
                             height: 116,
                             fit: BoxFit.cover,
@@ -196,35 +196,10 @@ class _AddItemPageState extends State<AddItemPage> {
                               );
                             },
                           )
-                        : kIsWeb
-                            ? FutureBuilder<Uint8List>(
-                                future: _selectedImage!.readAsBytes(),
-                                builder: (context, snapshot) {
-                                  if (snapshot.hasData) {
-                                    return Image.memory(
-                                      snapshot.data!,
-                                      width: 116,
-                                      height: 116,
-                                      fit: BoxFit.cover,
-                                    );
-                                  }
-                                  return const Center(
-                                    child: CircularProgressIndicator(),
-                                  );
-                                },
-                              )
-                            : Image.file(
-                                File(_selectedImage!.path),
-                                width: 116,
-                                height: 116,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) {
-                                  return const Icon(
-                                    Icons.error,
-                                    size: 48,
-                                    color: Color(0xFFEF4444),
-                                  );
-                                },
+                        : const Icon(
+                            Icons.image,
+                            size: 48,
+                            color: Color(0xFF64748B),
                           ),
                   )
                 : const Icon(
@@ -529,8 +504,10 @@ class _AddItemPageState extends State<AddItemPage> {
       );
       
       if (image != null) {
+        final bytes = await image.readAsBytes();
         setState(() {
           _selectedImage = image;
+          _selectedImageBytes = bytes;
         });
         
         ScaffoldMessenger.of(context).showSnackBar(
@@ -664,8 +641,10 @@ class _AddItemPageState extends State<AddItemPage> {
       );
       
       if (image != null) {
+        final bytes = await image.readAsBytes();
         setState(() {
           _selectedImage = image;
+          _selectedImageBytes = bytes;
         });
         
         ScaffoldMessenger.of(context).showSnackBar(

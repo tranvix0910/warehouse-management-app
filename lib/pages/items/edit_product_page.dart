@@ -1,6 +1,4 @@
-import 'dart:io';
 import 'dart:typed_data';
-import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../apis/update_product_api.dart';
@@ -33,6 +31,7 @@ class _EditProductPageState extends State<EditProductPage> {
   late TextEditingController _processorController;
 
   XFile? _selectedImage;
+  Uint8List? _selectedImageBytes;
   bool _isLoading = false;
 
   @override
@@ -77,8 +76,10 @@ class _EditProductPageState extends State<EditProductPage> {
       );
       
       if (image != null) {
+        final bytes = await image.readAsBytes();
         setState(() {
           _selectedImage = image;
+          _selectedImageBytes = bytes;
         });
       }
     } catch (e) {
@@ -179,24 +180,13 @@ class _EditProductPageState extends State<EditProductPage> {
                     child: _selectedImage != null
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(10),
-                            child: kIsWeb
-                                ? FutureBuilder<Uint8List>(
-                                    future: _selectedImage!.readAsBytes(),
-                                    builder: (context, snapshot) {
-                                      if (snapshot.hasData) {
-                                        return Image.memory(
-                                          snapshot.data!,
-                                          fit: BoxFit.cover,
-                                        );
-                                      }
-                                      return const Center(
-                                        child: CircularProgressIndicator(),
-                                      );
-                                    },
-                                  )
-                                : Image.file(
-                                    File(_selectedImage!.path),
+                            child: _selectedImageBytes != null
+                                ? Image.memory(
+                                    _selectedImageBytes!,
                                     fit: BoxFit.cover,
+                                  )
+                                : const Center(
+                                    child: CircularProgressIndicator(),
                                   ),
                           )
                         : widget.product.image.isNotEmpty

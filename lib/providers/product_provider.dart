@@ -1,5 +1,7 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/product_service.dart';
+import '../services/offline_database.dart';
 
 class ProductState {
   final List<ProductModel> products;
@@ -41,16 +43,29 @@ class ProductNotifier extends StateNotifier<ProductState> {
   ProductNotifier() : super(const ProductState());
 
   final _productService = ProductService.instance;
+  final _offlineDb = OfflineDatabase();
+  bool _isOfflineMode = false;
+
+  bool get isOfflineMode => _isOfflineMode;
 
   Future<void> loadProducts({bool forceRefresh = false}) async {
     state = state.copyWith(isLoading: true, errorMessage: null);
     
     try {
+      _isOfflineMode = !await _offlineDb.isOnline();
       final products = await _productService.getProducts(forceRefresh: forceRefresh);
+      
+      String? offlineMessage;
+      if (_isOfflineMode) {
+        offlineMessage = 'Offline mode - showing cached data';
+        debugPrint(offlineMessage);
+      }
+      
       state = state.copyWith(
         products: products,
         filteredProducts: _applyFilters(products, state.searchQuery, state.categoryFilter),
         isLoading: false,
+        errorMessage: offlineMessage,
       );
     } catch (e) {
       state = state.copyWith(
@@ -106,6 +121,18 @@ class ProductNotifier extends StateNotifier<ProductState> {
   void clearCache() {
     _productService.clearCache();
     state = const ProductState();
+  }
+
+  Future<void> createProductOffline(Map<String, dynamic> productData) async {
+    await _productService.createProductOffline(productData);
+  }
+
+  Future<void> updateProductOffline(String productId, Map<String, dynamic> productData) async {
+    await _productService.updateProductOffline(productId, productData);
+  }
+
+  Future<void> deleteProductOffline(String productId) async {
+    await _productService.deleteProductOffline(productId);
   }
 
   List<String> getCategories() {
