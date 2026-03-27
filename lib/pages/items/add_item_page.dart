@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import '../../apis/add_product_api.dart';
 import '../../utils/snack_bar.dart';
 import '../../services/product_service.dart';
+import '../../services/barcode_scanner_service.dart';
 
 class AddItemPage extends StatefulWidget {
   const AddItemPage({Key? key}) : super(key: key);
@@ -704,6 +705,45 @@ class _AddItemPageState extends State<AddItemPage> {
             ),
             const SizedBox(height: 20),
             
+            // Scan Barcode/QR Code option (NEW - Real scanner)
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF59E0B).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.qr_code_scanner,
+                  color: Color(0xFFF59E0B),
+                  size: 20,
+                ),
+              ),
+              title: const Text(
+                'Scan Barcode/QR Code',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              subtitle: const Text(
+                'Use camera to scan barcode or QR code',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                ),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _scanBarcode();
+              },
+            ),
+            
+            const SizedBox(height: 16),
+            
             // Scan with RFID Card option
             ListTile(
               contentPadding: EdgeInsets.zero,
@@ -728,6 +768,13 @@ class _AddItemPageState extends State<AddItemPage> {
                   fontWeight: FontWeight.w500,
                 ),
               ),
+              subtitle: const Text(
+                'Simulate RFID card scanning',
+                style: TextStyle(
+                  color: Color(0xFF64748B),
+                  fontSize: 12,
+                ),
+              ),
               onTap: () {
                 Navigator.pop(context);
                 _scanWithRFID();
@@ -736,7 +783,7 @@ class _AddItemPageState extends State<AddItemPage> {
             
             const SizedBox(height: 16),
             
-            // Manual RFID input option
+            // Manual input option
             ListTile(
               contentPadding: EdgeInsets.zero,
               leading: Container(
@@ -753,7 +800,7 @@ class _AddItemPageState extends State<AddItemPage> {
                 ),
               ),
               title: const Text(
-                'Manual RFID Input',
+                'Manual Input',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 16,
@@ -761,7 +808,7 @@ class _AddItemPageState extends State<AddItemPage> {
                 ),
               ),
               subtitle: const Text(
-                'Enter RFID card data manually',
+                'Enter SKU manually',
                 style: TextStyle(
                   color: Color(0xFF64748B),
                   fontSize: 12,
@@ -778,6 +825,23 @@ class _AddItemPageState extends State<AddItemPage> {
         ),
       ),
     );
+  }
+
+  void _scanBarcode() async {
+    if (kIsWeb) {
+      showErrorSnackTop(context, 'Barcode scanning is not supported on web');
+      return;
+    }
+    
+    final result = await BarcodeScannerService.scanBarcode(context);
+    
+    if (result != null && mounted) {
+      setState(() {
+        _rfidUUID = result;
+      });
+      
+      showSuccessSnackTop(context, 'Barcode scanned: $result');
+    }
   }
 
   void _showCategoryDialog() {

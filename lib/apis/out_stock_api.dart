@@ -1,10 +1,16 @@
 import 'package:dio/dio.dart';
 import 'api_client.dart';
+import '../models/pagination_models.dart';
 
 class SummaryOutStockApi {
-  static Future<Map<String, dynamic>> getOutOfStockReport() async {
+  static Future<Map<String, dynamic>> getOutOfStockReport({
+    PaginationParams? params,
+  }) async {
     try {
-      final response = await ApiClient.dio.get('/reports/out-of-stock');
+      final response = await ApiClient.dio.get(
+        '/reports/out-of-stock',
+        queryParameters: params?.toQueryParams(),
+      );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
         return response.data;
@@ -29,5 +35,14 @@ class SummaryOutStockApi {
       }
       throw Exception('Network error: ${e.message}');
     }
+  }
+
+  static Future<Map<String, dynamic>> getOutOfStockPaginated({
+    int page = 1,
+    int limit = 20,
+  }) async {
+    return getOutOfStockReport(
+      params: PaginationParams(page: page, limit: limit),
+    );
   }
 }

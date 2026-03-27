@@ -1,4 +1,5 @@
 import '../apis/product_api.dart';
+import '../models/pagination_models.dart';
 
 class ProductModel {
   final String id;
@@ -118,5 +119,33 @@ class ProductService {
       product.sku.toLowerCase().contains(lowercaseQuery) ||
       product.category.toLowerCase().contains(lowercaseQuery)
     ).toList();
+  }
+
+  Future<PaginatedResponse<ProductModel>> getProductsPaginated(
+    PaginationParams params,
+  ) async {
+    try {
+      final response = await GetAllProductsApi.getAllProducts(params: params);
+      final List<dynamic> productsData = response['data'] ?? [];
+      final products = productsData.map((json) => ProductModel.fromJson(json)).toList();
+      
+      PaginationInfo? pagination;
+      if (response['pagination'] != null) {
+        pagination = PaginationInfo.fromJson(response['pagination']);
+      }
+      
+      return PaginatedResponse(
+        success: true,
+        message: response['message'] ?? '',
+        data: products,
+        pagination: pagination,
+      );
+    } catch (e) {
+      return PaginatedResponse(
+        success: false,
+        message: e.toString(),
+        data: [],
+      );
+    }
   }
 }
