@@ -4,13 +4,15 @@ import 'package:url_launcher/url_launcher.dart';
 import '../../providers/providers.dart';
 import '../../providers/theme_provider.dart';
 import '../../l10n/app_localizations.dart';
-import '../../services/notification_service.dart';
+import '../../services/notification_service.dart' hide debugPrint;
 import '../../services/role_service.dart';
 import '../../services/offline_database.dart';
 import '../../services/confirmation_service.dart';
 import '../../services/batch_operations_service.dart';
 import '../../apis/ai_api.dart';
+import '../../apis/api_client.dart';
 import '../../utils/snack_bar.dart';
+import '../../utils/token_storage.dart';
 import '../profile/profile_page.dart';
 import '../activity/activity_log_page.dart';
 
@@ -81,11 +83,14 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         automaticallyImplyLeading: false,
         actions: [
           IconButton(
-            onPressed: () {},
-            icon: const Icon(
-              Icons.settings,
-              color: Colors.white,
-            ),
+            icon: const Icon(Icons.refresh, color: Colors.white),
+            onPressed: _loadGeminiSettings,
+            tooltip: 'Refresh',
+          ),
+          IconButton(
+            icon: const Icon(Icons.logout, color: Colors.white),
+            onPressed: () => _showLogoutDialog(context),
+            tooltip: 'Logout',
           ),
         ],
       ),
@@ -196,16 +201,16 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
               child: Row(
                 children: [
                   Container(
-                    width: 50,
-                    height: 50,
+                    width: 40,
+                    height: 40,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF3B82F6),
+                      color: _withOpacity(const Color(0xFF3B82F6), 0.2),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
-                      Icons.computer,
-                      color: Colors.white,
-                      size: 24,
+                      Icons.groups,
+                      color: Color(0xFF3B82F6),
+                      size: 20,
                     ),
                   ),
                   const SizedBox(width: 16),
@@ -218,12 +223,12 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 16,
-                            fontWeight: FontWeight.bold,
+                            fontWeight: FontWeight.w600,
                           ),
                         ),
                         SizedBox(height: 4),
                         Text(
-                          'ID: 1352781',
+                          'Team ID: 1 Member',
                           style: TextStyle(
                             color: Colors.grey,
                             fontSize: 12,
@@ -235,35 +240,6 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                   const Icon(
                     Icons.chevron_right,
                     color: Colors.grey,
-                  ),
-                ],
-              ),
-            ),
-            
-            const SizedBox(height: 16),
-            
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              decoration: BoxDecoration(
-                color: const Color(0xFF1E293B),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.add,
-                    color: Color(0xFF3B82F6),
-                  ),
-                  SizedBox(width: 8),
-                  Text(
-                    'Create New Team',
-                    style: TextStyle(
-                      color: Color(0xFF3B82F6),
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                    ),
                   ),
                 ],
               ),
@@ -628,25 +604,25 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             _buildSettingsItem(
               title: 'About Application',
               value: '',
-              onTap: () {},
+              onTap: () => _showAboutApplication(context),
             ),
             const SizedBox(height: 8),
             _buildSettingsItem(
               title: 'Contact Support',
               value: '',
-              onTap: () {},
+              onTap: () => _showContactSupport(context),
             ),
             const SizedBox(height: 8),
             _buildSettingsItem(
               title: 'FAQ',
               value: '',
-              onTap: () {},
+              onTap: () => _showFAQ(context),
             ),
             const SizedBox(height: 8),
             _buildSettingsItem(
               title: 'Privacy Policy',
               value: '',
-              onTap: () {},
+              onTap: () => _showPrivacyPolicy(context),
             ),
             const SizedBox(height: 8),
             _buildSettingsItem(
@@ -682,15 +658,15 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
+            const Row(
               children: [
-                const Icon(
+                Icon(
                   Icons.inventory_2,
                   color: Color(0xFFFFD93D),
                   size: 20,
                 ),
-                const SizedBox(width: 12),
-                const Text(
+                SizedBox(width: 12),
+                Text(
                   'Minimum Quantity Alert',
                   style: TextStyle(
                     color: Colors.white70,
@@ -1055,7 +1031,7 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: _withOpacity(Colors.black, 0.1),
             blurRadius: 4,
             offset: const Offset(0, 2),
           ),
@@ -1776,6 +1752,266 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  void _showLogoutDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text(
+          'Logout',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const Text(
+          'Are you sure you want to logout?',
+          style: TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          TextButton(
+            onPressed: () async {
+              try {
+                final refreshToken = await TokenStorage.getRefreshToken();
+                if (refreshToken != null) {
+                  await ApiClient.dio.post(
+                    '/auth/logout',
+                    data: {'refreshToken': refreshToken},
+                  );
+                }
+              } catch (e) {
+                debugPrint('Logout API error: $e');
+              } finally {
+                await TokenStorage.clearTokens();
+                await TokenStorage.clearUser();
+                
+                if (context.mounted) {
+                  Navigator.of(context).pop();
+                  showSuccessSnackTop(context, 'Logged out successfully');
+                  Navigator.pushReplacementNamed(context, '/signin');
+                }
+              }
+            },
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: Color(0xFFFF6B6B)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAboutApplication(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text(
+          'About Application',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const SingleChildScrollView(
+          child: Text(
+            'Warehouse Management Application\n\n'
+            'Version: 1.0.0\n\n'
+            'This application is designed to help manage warehouse inventory efficiently. '
+            'It provides features for tracking stock levels, managing suppliers and customers, '
+            'and monitoring inventory movements.\n\n'
+            'Developed with Flutter for cross-platform compatibility.',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Color(0xFF3B82F6)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showContactSupport(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text(
+          'Contact Support',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'For support, please contact:',
+                style: TextStyle(color: Colors.white70, fontSize: 14),
+              ),
+              const SizedBox(height: 16),
+              _buildContactItem('Trần Đại Vỉ', 'vitran6366@gmail.com', context),
+              const SizedBox(height: 12),
+              _buildContactItem('Trần Xuân Phát', 'phattran052004@gmail.com', context),
+              const SizedBox(height: 12),
+              _buildContactItem('Nguyễn Lưu Minh Khánh', 'khanhnlm2509@gmail.com', context),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Color(0xFF3B82F6)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContactItem(String name, String email, BuildContext context) {
+    return InkWell(
+      onTap: () {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Email: $email'),
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.email, color: Color(0xFF3B82F6), size: 20),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    name,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    email,
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showFAQ(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text(
+          'Frequently Asked Questions',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const SingleChildScrollView(
+          child: Text(
+            'Q: How do I add a new product?\n'
+            'A: Navigate to the Products section and tap the add button to create a new product entry.\n\n'
+            'Q: How do I update stock levels?\n'
+            'A: Use the Stock In or Stock Out features in the Transactions section to update inventory levels.\n\n'
+            'Q: Can I export my data?\n'
+            'A: Yes, you can export your data through the Settings menu under Data Management.\n\n'
+            'Q: How do I add team members?\n'
+            'A: Go to Settings > Manage Team > Team Members to add or manage team members.\n\n'
+            'Q: What should I do if I encounter an error?\n'
+            'A: Please contact our support team through the Contact Support option in Settings.',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Color(0xFF3B82F6)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showPrivacyPolicy(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        title: const Text(
+          'Privacy Policy',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        content: const SingleChildScrollView(
+          child: Text(
+            'Privacy Policy\n\n'
+            'Last Updated: 2024\n\n'
+            '1. Information We Collect\n'
+            'We collect information that you provide directly to us, including inventory data, '
+            'team information, and transaction records.\n\n'
+            '2. How We Use Your Information\n'
+            'We use the information to provide and improve our warehouse management services, '
+            'process transactions, and communicate with you.\n\n'
+            '3. Data Security\n'
+            'We implement appropriate security measures to protect your data against unauthorized '
+            'access, alteration, disclosure, or destruction.\n\n'
+            '4. Data Retention\n'
+            'We retain your data for as long as necessary to provide our services and comply '
+            'with legal obligations.\n\n'
+            '5. Your Rights\n'
+            'You have the right to access, update, or delete your personal information at any time '
+            'through the application settings.\n\n'
+            '6. Contact Us\n'
+            'If you have questions about this Privacy Policy, please contact us through the '
+            'Contact Support option in Settings.',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Color(0xFF3B82F6)),
+            ),
+          ),
+        ],
       ),
     );
   }
