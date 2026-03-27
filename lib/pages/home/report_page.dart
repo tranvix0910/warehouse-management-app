@@ -1,82 +1,32 @@
 import 'package:flutter/material.dart';
-import '../../apis/summary_report_api.dart';
-import '../../apis/old_stock_api.dart';
-import '../../apis/out_stock_api.dart';
-import '../../apis/low_stack_api.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:intl/intl.dart';
+import '../../providers/providers.dart';
+import '../../services/export_service.dart';
 import '../../utils/snack_bar.dart';
 
-class ReportItem {
-  final String id;
-  final String name;
-  final String sku;
-  final int stock;
-  final int? daysInStock;
-  final String status;
-  final String? image;
-  final String category;
-  final String cost;
-  final String price;
-
-  ReportItem({
-    required this.id,
-    required this.name,
-    required this.sku,
-    required this.stock,
-    this.daysInStock,
-    required this.status,
-    this.image,
-    required this.category,
-    required this.cost,
-    required this.price,
-  });
-
-  factory ReportItem.fromApi(Map<String, dynamic> data, String status) {
-    return ReportItem(
-      id: data['_id']?.toString() ?? '',
-      name: data['productName']?.toString() ?? '',
-      sku: data['SKU']?.toString() ?? '',
-      stock: (data['quantity'] as int?) ?? 0,
-      daysInStock: data['daysSinceLastStockIn'] as int?,
-      status: status,
-      image: data['image']?.toString(),
-      category: data['category']?.toString() ?? '',
-      cost: data['cost']?.toString() ?? '0',
-      price: data['price']?.toString() ?? '0',
-    );
-  }
-}
-
-class ReportPage extends StatefulWidget {
+class ReportPage extends ConsumerStatefulWidget {
   const ReportPage({super.key});
 
   @override
-  State<ReportPage> createState() => _ReportPageState();
+  ConsumerState<ReportPage> createState() => _ReportPageState();
 }
 
-class _ReportPageState extends State<ReportPage> {
+class _ReportPageState extends ConsumerState<ReportPage> {
   int selectedTabIndex = 0;
-  bool isLoading = true;
-  String? errorMessage;
-  
-  // Summary data
-  int lowStockCount = 0;
-  int oldStockCount = 0;
-  int outOfStockCount = 0;
-  int totalProductCount = 0;
-  
-  // Report items
-  List<ReportItem> oldStockItems = [];
-  List<ReportItem> outOfStockItems = [];
-  List<ReportItem> lowStockItems = [];
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    Future.microtask(() {
+      ref.read(reportNotifierProvider.notifier).loadReports();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final reportState = ref.watch(reportNotifierProvider);
+
     return Scaffold(
       backgroundColor: const Color(0xFF0F172A),
       appBar: AppBar(
@@ -91,10 +41,54 @@ class _ReportPageState extends State<ReportPage> {
         backgroundColor: const Color(0xFF1E293B),
         elevation: 0,
         automaticallyImplyLeading: false,
+        actions: [
+          if (reportState.startDate != null || reportState.endDate != null)
+            IconButton(
+              onPressed: () {
+                ref.read(reportNotifierProvider.notifier).clearDateRange();
+              },
+              icon: const Icon(Icons.clear, color: Colors.orange),
+              tooltip: 'Clear date filter',
+            ),
+          IconButton(
+            onPressed: () => _showDateRangePicker(context),
+            icon: Icon(
+              Icons.date_range,
+              color: reportState.startDate != null ? Colors.green : Colors.white,
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.download, color: Colors.white),
+            color: const Color(0xFF1E293B),
+            onSelected: (value) => _handleExport(value),
+            itemBuilder: (context) => [
+              const PopupMenuItem(
+                value: 'csv',
+                child: Row(
+                  children: [
+                    Icon(Icons.table_chart, color: Colors.green, size: 20),
+                    SizedBox(width: 12),
+                    Text('Export to CSV', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+              const PopupMenuItem(
+                value: 'pdf',
+                child: Row(
+                  children: [
+                    Icon(Icons.picture_as_pdf, color: Colors.red, size: 20),
+                    SizedBox(width: 12),
+                    Text('Export to PDF', style: TextStyle(color: Colors.white)),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
-      body: isLoading
+      body: reportState.isLoading
           ? const Center(child: CircularProgressIndicator())
-          : (errorMessage != null)
+          : (reportState.errorMessage != null)
               ? Padding(
                   padding: const EdgeInsets.all(16),
                   child: Column(
@@ -102,126 +96,157 @@ class _ReportPageState extends State<ReportPage> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       Text(
-                        errorMessage!,
+                        reportState.errorMessage!,
                         textAlign: TextAlign.center,
                         style: const TextStyle(color: Colors.white70),
                       ),
                       const SizedBox(height: 12),
                       ElevatedButton(
-                        onPressed: _loadData,
+                        onPressed: () => ref.read(reportNotifierProvider.notifier).loadReports(),
                         child: const Text('Retry'),
                       )
                     ],
                   ),
                 )
-              : SingleChildScrollView(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Dashboard Overview Cards
-                      const Text(
-                        'Analytics Dashboard',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
+              : RefreshIndicator(
+                  onRefresh: () => ref.read(reportNotifierProvider.notifier).loadReports(),
+                  child: SingleChildScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (reportState.startDate != null || reportState.endDate != null)
+                          _buildDateRangeIndicator(reportState),
+                        
+                        const Text(
+                          'Analytics Dashboard',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 16),
-                      
-                      // Overview Cards
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildOverviewCard(
-                              title: 'Old Stock',
-                              count: oldStockCount.toString(),
-                              subtitle: '>30 days',
-                              color: const Color(0xFFFF8C00),
-                              icon: Icons.inventory,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildOverviewCard(
-                              title: 'Out of Stock',
-                              count: outOfStockCount.toString(),
-                              subtitle: 'Need restock',
-                              color: const Color(0xFFFF6B6B),
-                              icon: Icons.warning,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-                      
-                      Row(
-                        children: [
-                          Expanded(
-                            child: _buildOverviewCard(
-                              title: 'Low Stock',
-                              count: lowStockCount.toString(),
-                              subtitle: 'Low quantity',
-                              color: const Color(0xFFFFD93D),
-                              icon: Icons.trending_down,
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: _buildOverviewCard(
-                              title: 'Total Items',
-                              count: totalProductCount.toString(),
-                              subtitle: 'Need attention',
-                              color: const Color(0xFF3B82F6),
-                              icon: Icons.analytics,
-                            ),
-                          ),
-                        ],
-                      ),
-                      
-                      const SizedBox(height: 24),
-                      
-                      // Tab Navigation
-                      Container(
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF1E293B),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
+                        const SizedBox(height: 16),
+                        
+                        Row(
                           children: [
                             Expanded(
-                              child: _buildTabButton(
+                              child: _buildOverviewCard(
                                 title: 'Old Stock',
-                                index: 0,
-                                isSelected: selectedTabIndex == 0,
+                                count: reportState.summary.oldStockCount.toString(),
+                                subtitle: '>30 days',
+                                color: const Color(0xFFFF8C00),
+                                icon: Icons.inventory,
                               ),
                             ),
+                            const SizedBox(width: 12),
                             Expanded(
-                              child: _buildTabButton(
+                              child: _buildOverviewCard(
                                 title: 'Out of Stock',
-                                index: 1,
-                                isSelected: selectedTabIndex == 1,
-                              ),
-                            ),
-                            Expanded(
-                              child: _buildTabButton(
-                                title: 'Low Stock',
-                                index: 2,
-                                isSelected: selectedTabIndex == 2,
+                                count: reportState.summary.outOfStockCount.toString(),
+                                subtitle: 'Need restock',
+                                color: const Color(0xFFFF6B6B),
+                                icon: Icons.warning,
                               ),
                             ),
                           ],
                         ),
-                      ),
-                      
-                      const SizedBox(height: 16),
-                      
-                      // Content based on selected tab
-                      _buildTabContent(),
-                    ],
+                        const SizedBox(height: 12),
+                        
+                        Row(
+                          children: [
+                            Expanded(
+                              child: _buildOverviewCard(
+                                title: 'Low Stock',
+                                count: reportState.summary.lowStockCount.toString(),
+                                subtitle: 'Low quantity',
+                                color: const Color(0xFFFFD93D),
+                                icon: Icons.trending_down,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: _buildOverviewCard(
+                                title: 'Total Items',
+                                count: reportState.summary.totalProductCount.toString(),
+                                subtitle: 'Need attention',
+                                color: const Color(0xFF3B82F6),
+                                icon: Icons.analytics,
+                              ),
+                            ),
+                          ],
+                        ),
+                        
+                        const SizedBox(height: 24),
+                        
+                        Container(
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF1E293B),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Row(
+                            children: [
+                              Expanded(
+                                child: _buildTabButton(
+                                  title: 'Old Stock',
+                                  index: 0,
+                                  isSelected: selectedTabIndex == 0,
+                                  count: reportState.oldStockItems.length,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildTabButton(
+                                  title: 'Out of Stock',
+                                  index: 1,
+                                  isSelected: selectedTabIndex == 1,
+                                  count: reportState.outOfStockItems.length,
+                                ),
+                              ),
+                              Expanded(
+                                child: _buildTabButton(
+                                  title: 'Low Stock',
+                                  index: 2,
+                                  isSelected: selectedTabIndex == 2,
+                                  count: reportState.lowStockItems.length,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 16),
+                        
+                        _buildTabContent(reportState),
+                      ],
+                    ),
                   ),
                 ),
+    );
+  }
+
+  Widget _buildDateRangeIndicator(ReportState reportState) {
+    final dateFormat = DateFormat('MMM dd, yyyy');
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF3B82F6).withAlpha(51),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFF3B82F6).withAlpha(128)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.date_range, color: Color(0xFF3B82F6), size: 20),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(
+              'Date Range: ${reportState.startDate != null ? dateFormat.format(reportState.startDate!) : 'Any'} - ${reportState.endDate != null ? dateFormat.format(reportState.endDate!) : 'Any'}',
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -237,7 +262,7 @@ class _ReportPageState extends State<ReportPage> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withAlpha(77)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -282,6 +307,7 @@ class _ReportPageState extends State<ReportPage> {
     required String title,
     required int index,
     required bool isSelected,
+    required int count,
   }) {
     return GestureDetector(
       onTap: () {
@@ -295,34 +321,46 @@ class _ReportPageState extends State<ReportPage> {
           color: isSelected ? const Color(0xFF3B82F6) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Text(
-          title,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: isSelected ? Colors.white : Colors.grey,
-            fontSize: 14,
-            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-          ),
+        child: Column(
+          children: [
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected ? Colors.white : Colors.grey,
+                fontSize: 12,
+                fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              '($count)',
+              style: TextStyle(
+                color: isSelected ? Colors.white70 : Colors.grey,
+                fontSize: 10,
+              ),
+            ),
+          ],
         ),
       ),
     );
   }
 
-  Widget _buildTabContent() {
+  Widget _buildTabContent(ReportState reportState) {
     List<ReportItem> items;
     String emptyMessage;
     
     switch (selectedTabIndex) {
       case 0:
-        items = oldStockItems;
+        items = reportState.oldStockItems;
         emptyMessage = 'No old stock items';
         break;
       case 1:
-        items = outOfStockItems;
+        items = reportState.outOfStockItems;
         emptyMessage = 'No out of stock items';
         break;
       case 2:
-        items = lowStockItems;
+        items = reportState.lowStockItems;
         emptyMessage = 'No low stock items';
         break;
       default:
@@ -338,12 +376,23 @@ class _ReportPageState extends State<ReportPage> {
           borderRadius: BorderRadius.circular(12),
         ),
         child: Center(
-          child: Text(
-            emptyMessage,
-            style: const TextStyle(
-              color: Colors.grey,
-              fontSize: 16,
-            ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.check_circle_outline,
+                color: Colors.green.withAlpha(128),
+                size: 48,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                emptyMessage,
+                style: const TextStyle(
+                  color: Colors.grey,
+                  fontSize: 16,
+                ),
+              ),
+            ],
           ),
         ),
       );
@@ -385,7 +434,7 @@ class _ReportPageState extends State<ReportPage> {
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-                      color: const Color(0xFF334155),
+          color: const Color(0xFF334155),
           width: 1,
         ),
       ),
@@ -395,7 +444,7 @@ class _ReportPageState extends State<ReportPage> {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.2),
+              color: statusColor.withAlpha(51),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -441,7 +490,7 @@ class _ReportPageState extends State<ReportPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.2),
+              color: statusColor.withAlpha(51),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
@@ -471,52 +520,194 @@ class _ReportPageState extends State<ReportPage> {
     }
   }
 
-  Future<void> _loadData() async {
-    setState(() {
-      isLoading = true;
-      errorMessage = null;
-    });
+  Future<void> _showDateRangePicker(BuildContext context) async {
+    final reportNotifier = ref.read(reportNotifierProvider.notifier);
+    final reportState = ref.read(reportNotifierProvider);
+    
+    final initialDateRange = DateTimeRange(
+      start: reportState.startDate ?? DateTime.now().subtract(const Duration(days: 30)),
+      end: reportState.endDate ?? DateTime.now(),
+    );
 
-    try {
-      // Load summary data
-      final summaryResponse = await SummaryReportApi.getSummaryReport();
-      final summaryData = summaryResponse['data'] as Map<String, dynamic>;
-      
-      // Load individual reports
-      final oldStockResponse = await SummaryOldStockApi.getOldStockReport();
-      final outStockResponse = await SummaryOutStockApi.getOutOfStockReport();
-      final lowStockResponse = await LowStockApi.getLowStockReport();
+    final picked = await showDateRangePicker(
+      context: context,
+      firstDate: DateTime(2020),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      initialDateRange: initialDateRange,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: const ColorScheme.dark(
+              primary: Color(0xFF3B82F6),
+              onPrimary: Colors.white,
+              surface: Color(0xFF1E293B),
+              onSurface: Colors.white,
+            ),
+            dialogBackgroundColor: const Color(0xFF0F172A),
+          ),
+          child: child!,
+        );
+      },
+    );
 
-      final List<dynamic> oldStockData = oldStockResponse['data'] as List<dynamic>;
-      final List<dynamic> outStockData = outStockResponse['data'] as List<dynamic>;
-      final List<dynamic> lowStockData = lowStockResponse['data'] as List<dynamic>;
-
-      setState(() {
-        // Update summary counts
-        lowStockCount = summaryData['lowStock'] as int? ?? 0;
-        oldStockCount = summaryData['oldStock'] as int? ?? 0;
-        outOfStockCount = summaryData['outOfStock'] as int? ?? 0;
-        totalProductCount = summaryData['totalProduct'] as int? ?? 0;
-
-        // Update report items
-        oldStockItems = oldStockData.map((item) => 
-          ReportItem.fromApi(item as Map<String, dynamic>, 'old')).toList();
-        outOfStockItems = outStockData.map((item) => 
-          ReportItem.fromApi(item as Map<String, dynamic>, 'out')).toList();
-        lowStockItems = lowStockData.map((item) => 
-          ReportItem.fromApi(item as Map<String, dynamic>, 'low')).toList();
-
-        isLoading = false;
-      });
-    } catch (e) {
-      setState(() {
-        isLoading = false;
-        errorMessage = e.toString();
-      });
-      
+    if (picked != null) {
+      reportNotifier.setDateRange(picked.start, picked.end);
       if (mounted) {
-        showErrorSnackTop(context, 'Failed to load reports: ${e.toString()}');
+        showSuccessSnackTop(
+          context,
+          'Date range set: ${DateFormat('MMM dd').format(picked.start)} - ${DateFormat('MMM dd').format(picked.end)}',
+        );
       }
     }
+  }
+
+  Future<void> _handleExport(String format) async {
+    final reportState = ref.read(reportNotifierProvider);
+    
+    List<ReportItem> items;
+    String reportType;
+    String reportTitle;
+
+    switch (selectedTabIndex) {
+      case 0:
+        items = reportState.oldStockItems;
+        reportType = 'old_stock';
+        reportTitle = 'Old Stock Report';
+        break;
+      case 1:
+        items = reportState.outOfStockItems;
+        reportType = 'out_of_stock';
+        reportTitle = 'Out of Stock Report';
+        break;
+      case 2:
+        items = reportState.lowStockItems;
+        reportType = 'low_stock';
+        reportTitle = 'Low Stock Report';
+        break;
+      default:
+        items = reportState.allItems;
+        reportType = 'all';
+        reportTitle = 'Inventory Report';
+    }
+
+    if (items.isEmpty) {
+      showErrorSnackTop(context, 'No data to export');
+      return;
+    }
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      String filePath;
+      
+      if (format == 'csv') {
+        filePath = await ExportService.exportReportToCSV(
+          items: items,
+          reportType: reportType,
+          startDate: reportState.startDate,
+          endDate: reportState.endDate,
+        );
+      } else {
+        filePath = await ExportService.exportReportToPDF(
+          items: items,
+          reportType: reportType,
+          reportTitle: reportTitle,
+          startDate: reportState.startDate,
+          endDate: reportState.endDate,
+        );
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        
+        _showExportSuccessDialog(filePath, format);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        showErrorSnackTop(context, 'Export failed: ${e.toString()}');
+      }
+    }
+  }
+
+  void _showExportSuccessDialog(String filePath, String format) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Icon(
+              format == 'csv' ? Icons.table_chart : Icons.picture_as_pdf,
+              color: format == 'csv' ? Colors.green : Colors.red,
+            ),
+            const SizedBox(width: 12),
+            const Text(
+              'Export Successful',
+              style: TextStyle(color: Colors.white),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'File exported successfully!',
+              style: TextStyle(color: Colors.white70),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0F172A),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.folder, color: Colors.grey, size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      filePath.split('/').last,
+                      style: const TextStyle(color: Colors.white70, fontSize: 12),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Close',
+              style: TextStyle(color: Colors.grey),
+            ),
+          ),
+          ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pop(context);
+              ExportService.shareFile(filePath);
+            },
+            icon: const Icon(Icons.share, size: 18),
+            label: const Text('Share'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3B82F6),
+              foregroundColor: Colors.white,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }

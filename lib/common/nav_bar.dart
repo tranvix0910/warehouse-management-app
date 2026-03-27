@@ -57,11 +57,15 @@ class CustomNavBar extends StatelessWidget {
               ),
               GButton(
                 icon: Icons.receipt_long,
-                text: 'Transactions',
+                text: 'Trans',
               ),
               GButton(
                 icon: Icons.analytics,
                 text: 'Report',
+              ),
+              GButton(
+                icon: Icons.smart_toy,
+                text: 'AI',
               ),
               GButton(
                 icon: Icons.settings,

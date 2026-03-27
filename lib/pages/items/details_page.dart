@@ -6,6 +6,8 @@ import 'edit_product_page.dart';
 import '../../services/product_service.dart';
 import '../../apis/delete_product_api.dart';
 import '../../utils/snack_bar.dart';
+import '../../services/role_service.dart';
+import '../../services/confirmation_service.dart';
 
 class ItemDetailsPage extends StatefulWidget {
   final ProductModel product;
@@ -17,7 +19,13 @@ class ItemDetailsPage extends StatefulWidget {
 }
 
 class _ItemDetailsPageState extends State<ItemDetailsPage> {
+  final RoleService _roleService = RoleService();
+
   void _handleEdit() async {
+    if (!_roleService.canEditProduct()) {
+      showErrorSnackTop(context, 'You do not have permission to edit products');
+      return;
+    }
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -32,122 +40,19 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
   }
 
   void _handleDelete() async {
-    // Show confirmation dialog
-    final confirmed = await showDialog<bool>(
+    if (!_roleService.canDeleteProduct()) {
+      showErrorSnackTop(context, 'You do not have permission to delete products');
+      return;
+    }
+
+    final confirmed = await ConfirmationService.confirmDelete(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(color: Color(0xFF334155), width: 1),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Icon(
-                Icons.warning_amber_rounded,
-                color: Color(0xFFEF4444),
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'Delete Product',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Are you sure you want to delete "${widget.product.name}"?',
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 15,
-              ),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: const Color(0xFFEF4444).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: const Color(0xFFEF4444).withOpacity(0.3),
-                  width: 1,
-                ),
-              ),
-              child: const Row(
-                children: [
-                  Icon(
-                    Icons.info_outline,
-                    color: Color(0xFFEF4444),
-                    size: 18,
-                  ),
-                  SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      'This action cannot be undone',
-                      style: TextStyle(
-                        color: Color(0xFFEF4444),
-                        fontSize: 13,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text(
-              'Cancel',
-              style: TextStyle(
-                color: Colors.grey,
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context, true),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFFEF4444),
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            ),
-            child: const Text(
-              'Delete',
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-          ),
-        ],
-      ),
+      itemName: widget.product.name,
+      itemType: 'Product',
+      requireTyping: false,
     );
 
-    if (confirmed != true) return;
+    if (!confirmed) return;
 
     // Show loading
     if (mounted) {
@@ -202,16 +107,18 @@ class _ItemDetailsPageState extends State<ItemDetailsPage> {
           ),
         ),
         actions: [
-          IconButton(
-            onPressed: _handleEdit,
-            icon: const Icon(Icons.edit, color: Colors.white),
-            tooltip: 'Edit Product',
-          ),
-          IconButton(
-            onPressed: _handleDelete,
-            icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
-            tooltip: 'Delete Product',
-          ),
+          if (_roleService.canEditProduct())
+            IconButton(
+              onPressed: _handleEdit,
+              icon: const Icon(Icons.edit, color: Colors.white),
+              tooltip: 'Edit Product',
+            ),
+          if (_roleService.canDeleteProduct())
+            IconButton(
+              onPressed: _handleDelete,
+              icon: const Icon(Icons.delete_outline, color: Color(0xFFEF4444)),
+              tooltip: 'Delete Product',
+            ),
         ],
       ),
 

@@ -1,7 +1,9 @@
+import 'package:flutter_dotenv/flutter_dotenv.dart';
+
 // development
 class ApiConstants {
   static String get baseUrl {
-    return 'http://localhost:4000/api/v1';
+    return dotenv.env['BASE_URL'] ?? 'http://localhost:4000/api/v1';
   }
 }
 
