@@ -1,10 +1,16 @@
 import 'package:flutter/material.dart';
+import '../../apis/auth_api.dart';
 import '../../core/firebase_db_service.dart.dart';
+import '../../utils/snack_bar.dart';
 import '../../utils/token_storage.dart';
 import '../../apis/product_api.dart';
+import '../../apis/transaction_api.dart';
 import '../../services/product_service.dart';
 import '../items/add_item_page.dart';
 import '../items/details_page.dart';
+import '../debug/firebase_debug_page.dart';
+import '../transactions/stock_in_page.dart';
+import '../transactions/stock_out_page.dart';
 
 class ItemModel {
   final String id;
@@ -84,12 +90,17 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   List<ItemModel> items = [];
   bool isLoading = true;
+  bool isLoadingTransactions = true;
   String? errorMessage;
+  int totalTrans = 0;
+  int totalStockIn = 0;
+  int totalStockOut = 0;
 
   @override
   void initState() {
     super.initState();
     _loadProducts();
+    _loadTransactionInfo();
   }
 
   Future<void> _loadProducts() async {
@@ -118,6 +129,29 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+  Future<void> _loadTransactionInfo() async {
+    try {
+      setState(() {
+        isLoadingTransactions = true;
+      });
+
+      final response = await GetAllTransactionsApi.getInfoTransaction();
+      final data = response['data'];
+      
+      setState(() {
+        totalTrans = data['totalTrans'] ?? 0;
+        totalStockIn = data['totalStockIn'] ?? 0;
+        totalStockOut = data['totalStockOut'] ?? 0;
+        isLoadingTransactions = false;
+      });
+    } catch (e) {
+      print('Error loading transaction info: $e');
+      setState(() {
+        isLoadingTransactions = false;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -137,7 +171,18 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(height: 30),
 
               // Environment Panel (Temperature & Humidity)
-              EnvironmentPanel(service: FirebaseEnvironmentService()),
+              GestureDetector(
+                onLongPress: () {
+                  // Long press để vào debug page
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const FirebaseDebugPage(),
+                    ),
+                  );
+                },
+                child: EnvironmentPanel(service: FirebaseEnvironmentService()),
+              ),
               const SizedBox(height: 20),
 
               // Action Buttons
@@ -165,30 +210,33 @@ class _DashboardPageState extends State<DashboardPage> {
         final String? avatarURL = user?['avatar'];
         return Row(
           children: [
-            CircleAvatar(
-              radius: 25,
-              backgroundColor: const Color(0xFF3B82F6),
-              child: ClipOval(
-                child: avatarURL != null && avatarURL.isNotEmpty
-                    ? Image.network(
-                        avatarURL,
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
-                        errorBuilder: (context, error, stackTrace) {
-                          return const Icon(
-                            Icons.person,
-                            color: Colors.white,
-                            size: 30,
-                          );
-                        },
-                      )
-                    : Image.asset(
-                        'https://res.cloudinary.com/djmeybzjk/image/upload/v1756449865/pngfind.com-placeholder-png-6104451_awuxxc.png',
-                        width: 50,
-                        height: 50,
-                        fit: BoxFit.cover,
-                      ),
+            GestureDetector(
+              onTap: () => _showAvatarOptions(displayName, avatarURL),
+              child: CircleAvatar(
+                radius: 25,
+                backgroundColor: const Color(0xFF3B82F6),
+                child: ClipOval(
+                  child: avatarURL != null && avatarURL.isNotEmpty
+                      ? Image.network(
+                          avatarURL,
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 30,
+                            );
+                          },
+                        )
+                      : Image.asset(
+                          'https://res.cloudinary.com/djmeybzjk/image/upload/v1756449865/pngfind.com-placeholder-png-6104451_awuxxc.png',
+                          width: 50,
+                          height: 50,
+                          fit: BoxFit.cover,
+                        ),
+                ),
               ),
             ),
             const SizedBox(width: 12),
@@ -210,14 +258,6 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
             ),
             const Spacer(),
-            IconButton(
-              onPressed: () {},
-              icon: const Icon(
-                Icons.notifications_outlined,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
           ],
         );
       },
@@ -261,9 +301,9 @@ class _DashboardPageState extends State<DashboardPage> {
           const SizedBox(height: 20),
           Row(
             children: [
-              Expanded(child: _buildStatItem('276', 'Total')),
-              Expanded(child: _buildStatItem('374', 'Stock In')),
-              Expanded(child: _buildStatItem('98', 'Stock Out')),
+              Expanded(child: _buildStatItem(totalTrans.toString(), 'Total')),
+              Expanded(child: _buildStatItem(totalStockIn.toString(), 'Stock In')),
+              Expanded(child: _buildStatItem(totalStockOut.toString(), 'Stock Out')),
             ],
           ),
         ],
@@ -275,14 +315,24 @@ class _DashboardPageState extends State<DashboardPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          value,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 32,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
+        isLoadingTransactions
+            ? const SizedBox(
+                width: 40,
+                height: 40,
+                child: CircularProgressIndicator(
+                  color: Color(0xFF3B82F6),
+                  strokeWidth: 3,
+                ),
+              )
+            : Text(
+                value,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+        const SizedBox(height: 4),
         Text(
           label,
           style: TextStyle(
@@ -302,6 +352,7 @@ class _DashboardPageState extends State<DashboardPage> {
             icon: Icons.arrow_downward,
             label: 'Stock In',
             color: Colors.green,
+            onTap: _navigateToStockIn,
           ),
         ),
         const SizedBox(width: 12),
@@ -310,17 +361,8 @@ class _DashboardPageState extends State<DashboardPage> {
             icon: Icons.arrow_upward,
             label: 'Stock Out',
             color: Colors.red,
+            onTap: _navigateToStockOut,
           ),
-        ),
-        const SizedBox(width: 12),
-        Container(
-          width: 50,
-          height: 50,
-          decoration: BoxDecoration(
-            color: const Color(0xFF1E293B),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: const Icon(Icons.open_in_full, color: Colors.white, size: 24),
         ),
       ],
     );
@@ -330,28 +372,164 @@ class _DashboardPageState extends State<DashboardPage> {
     required IconData icon,
     required String label,
     required Color color,
+    required VoidCallback onTap,
   }) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(12),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(width: 8),
-          Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
+  }
+
+  Future<void> _navigateToStockIn() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const StockInPage()),
+    );
+    // Refresh data after returning
+    _loadTransactionInfo();
+    _loadProducts();
+  }
+
+  Future<void> _navigateToStockOut() async {
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const StockOutPage()),
+    );
+    // Refresh data after returning
+    _loadTransactionInfo();
+    _loadProducts();
+  }
+
+  void _showAvatarOptions(String displayName, String? avatarURL) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: const Color(0xFF1E293B),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                children: [
+                  CircleAvatar(
+                    radius: 28,
+                    backgroundColor: const Color(0xFF3B82F6),
+                    child: ClipOval(
+                      child: avatarURL != null && avatarURL.isNotEmpty
+                          ? Image.network(
+                              avatarURL,
+                              width: 56,
+                              height: 56,
+                              fit: BoxFit.cover,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(
+                                  Icons.person,
+                                  color: Colors.white,
+                                  size: 32,
+                                );
+                              },
+                            )
+                          : const Icon(
+                              Icons.person,
+                              color: Colors.white,
+                              size: 32,
+                            ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          displayName,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        const Text(
+                          'Tap logout to end session',
+                          style: TextStyle(color: Colors.grey, fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    Navigator.pop(sheetContext);
+                    await _handleLogout();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFFEF4444),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  icon: const Icon(Icons.logout),
+                  label: const Text(
+                    'Logout',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _handleLogout() async {
+    try {
+      await AuthApi.logout();
+    } catch (e) {
+      if (mounted) {
+        showErrorSnackTop(context, e.toString());
+      }
+    } finally {
+      await TokenStorage.clearTokens();
+      await TokenStorage.clearUser();
+      if (!mounted) return;
+      showSuccessSnackTop(context, 'Logged out successfully');
+      Navigator.pushNamedAndRemoveUntil(context, '/signin', (route) => false);
+    }
   }
 
   Widget _buildItemsSection() {

@@ -231,9 +231,9 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFF3B82F6).withOpacity(0.2),
+        color: const Color(0xFF3B82F6).withAlpha(51),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.5)),
+        border: Border.all(color: const Color(0xFF3B82F6).withAlpha(128)),
       ),
       child: Row(
         children: [
@@ -262,7 +262,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        border: Border.all(color: color.withAlpha(77)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -381,7 +381,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             children: [
               Icon(
                 Icons.check_circle_outline,
-                color: Colors.green.withOpacity(0.5),
+                color: Colors.green.withAlpha(128),
                 size: 48,
               ),
               const SizedBox(height: 12),
@@ -444,7 +444,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.2),
+              color: statusColor.withAlpha(51),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Icon(
@@ -490,7 +490,7 @@ class _ReportPageState extends ConsumerState<ReportPage> {
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
-              color: statusColor.withOpacity(0.2),
+              color: statusColor.withAlpha(51),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Text(
