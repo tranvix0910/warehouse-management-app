@@ -1,9 +1,11 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import '../services/product_service.dart';
 import '../models/transaction_models.dart';
 import '../apis/transaction_api.dart';
+import '../apis/api_client.dart';
 
 class OfflineDatabase {
   static final OfflineDatabase _instance = OfflineDatabase._internal();
@@ -17,100 +19,175 @@ class OfflineDatabase {
   static const String _pendingActionsKey = 'pending_sync_actions';
   static const String _lastSyncKey = 'last_sync_timestamp';
 
-  Future<bool> isOnline() async {
-    final connectivityResult = await Connectivity().checkConnectivity();
-    return connectivityResult.any((result) => 
-      result == ConnectivityResult.mobile || 
-      result == ConnectivityResult.wifi ||
-      result == ConnectivityResult.ethernet
-    );
-  }
+  bool? _lastOnlineStatus;
 
-  Stream<bool> get onConnectivityChanged {
-    return Connectivity().onConnectivityChanged.map((results) {
-      return results.any((result) => 
+  Future<bool> isOnline() async {
+    try {
+      final connectivityResult = await Connectivity().checkConnectivity();
+      final hasConnection = connectivityResult.any((result) => 
         result == ConnectivityResult.mobile || 
         result == ConnectivityResult.wifi ||
         result == ConnectivityResult.ethernet
       );
+      _lastOnlineStatus = hasConnection;
+      return hasConnection;
+    } catch (e) {
+      debugPrint('Error checking connectivity: $e');
+      return _lastOnlineStatus ?? false;
+    }
+  }
+
+  Stream<bool> get onConnectivityChanged {
+    return Connectivity().onConnectivityChanged.map((results) {
+      final isOnline = results.any((result) => 
+        result == ConnectivityResult.mobile || 
+        result == ConnectivityResult.wifi ||
+        result == ConnectivityResult.ethernet
+      );
+      _lastOnlineStatus = isOnline;
+      return isOnline;
     });
   }
 
   Future<void> cacheProducts(List<ProductModel> products) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = products.map((p) => p.toJson()).toList();
-    await prefs.setString(_productsKey, jsonEncode(jsonList));
-    await _updateLastSync();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = products.map((p) => p.toJson()).toList();
+      await prefs.setString(_productsKey, jsonEncode(jsonList));
+      await _updateLastSync();
+      debugPrint('Cached ${products.length} products to offline storage');
+    } catch (e) {
+      debugPrint('Error caching products: $e');
+    }
   }
 
   Future<List<ProductModel>> getCachedProducts() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_productsKey);
+      if (jsonString == null || jsonString.isEmpty) return [];
+      
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      final products = jsonList.map((json) => ProductModel.fromJson(json)).toList();
+      debugPrint('Retrieved ${products.length} cached products');
+      return products;
+    } catch (e) {
+      debugPrint('Error getting cached products: $e');
+      return [];
+    }
+  }
+
+  Future<bool> hasCachedProducts() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(_productsKey);
-    if (jsonString == null) return [];
-    
-    final List<dynamic> jsonList = jsonDecode(jsonString);
-    return jsonList.map((json) => ProductModel.fromJson(json)).toList();
+    return jsonString != null && jsonString.isNotEmpty;
   }
 
   Future<void> cacheTransactions(List<Transaction> transactions) async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonList = transactions.map((t) => _transactionToJson(t)).toList();
-    await prefs.setString(_transactionsKey, jsonEncode(jsonList));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonList = transactions.map((t) => _transactionToJson(t)).toList();
+      await prefs.setString(_transactionsKey, jsonEncode(jsonList));
+      debugPrint('Cached ${transactions.length} transactions to offline storage');
+    } catch (e) {
+      debugPrint('Error caching transactions: $e');
+    }
   }
 
   Future<List<Transaction>> getCachedTransactions() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_transactionsKey);
+      if (jsonString == null || jsonString.isEmpty) return [];
+      
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      final transactions = jsonList.map((json) => Transaction.fromJson(json)).toList();
+      debugPrint('Retrieved ${transactions.length} cached transactions');
+      return transactions;
+    } catch (e) {
+      debugPrint('Error getting cached transactions: $e');
+      return [];
+    }
+  }
+
+  Future<bool> hasCachedTransactions() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonString = prefs.getString(_transactionsKey);
-    if (jsonString == null) return [];
-    
-    final List<dynamic> jsonList = jsonDecode(jsonString);
-    return jsonList.map((json) => Transaction.fromJson(json)).toList();
+    return jsonString != null && jsonString.isNotEmpty;
   }
 
   Future<void> cacheCustomers(List<Map<String, dynamic>> customers) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_customersKey, jsonEncode(customers));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_customersKey, jsonEncode(customers));
+    } catch (e) {
+      debugPrint('Error caching customers: $e');
+    }
   }
 
   Future<List<Map<String, dynamic>>> getCachedCustomers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_customersKey);
-    if (jsonString == null) return [];
-    
-    final List<dynamic> jsonList = jsonDecode(jsonString);
-    return jsonList.cast<Map<String, dynamic>>();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_customersKey);
+      if (jsonString == null || jsonString.isEmpty) return [];
+      
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      return jsonList.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('Error getting cached customers: $e');
+      return [];
+    }
   }
 
   Future<void> cacheSuppliers(List<Map<String, dynamic>> suppliers) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_suppliersKey, jsonEncode(suppliers));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_suppliersKey, jsonEncode(suppliers));
+    } catch (e) {
+      debugPrint('Error caching suppliers: $e');
+    }
   }
 
   Future<List<Map<String, dynamic>>> getCachedSuppliers() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_suppliersKey);
-    if (jsonString == null) return [];
-    
-    final List<dynamic> jsonList = jsonDecode(jsonString);
-    return jsonList.cast<Map<String, dynamic>>();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_suppliersKey);
+      if (jsonString == null || jsonString.isEmpty) return [];
+      
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      return jsonList.cast<Map<String, dynamic>>();
+    } catch (e) {
+      debugPrint('Error getting cached suppliers: $e');
+      return [];
+    }
   }
 
   Future<void> addPendingAction(PendingAction action) async {
-    final prefs = await SharedPreferences.getInstance();
-    final actions = await getPendingActions();
-    actions.add(action);
-    
-    final jsonList = actions.map((a) => a.toJson()).toList();
-    await prefs.setString(_pendingActionsKey, jsonEncode(jsonList));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final actions = await getPendingActions();
+      actions.add(action);
+      
+      final jsonList = actions.map((a) => a.toJson()).toList();
+      await prefs.setString(_pendingActionsKey, jsonEncode(jsonList));
+      debugPrint('Added pending action: ${action.type}');
+    } catch (e) {
+      debugPrint('Error adding pending action: $e');
+    }
   }
 
   Future<List<PendingAction>> getPendingActions() async {
-    final prefs = await SharedPreferences.getInstance();
-    final jsonString = prefs.getString(_pendingActionsKey);
-    if (jsonString == null) return [];
-    
-    final List<dynamic> jsonList = jsonDecode(jsonString);
-    return jsonList.map((json) => PendingAction.fromJson(json)).toList();
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final jsonString = prefs.getString(_pendingActionsKey);
+      if (jsonString == null || jsonString.isEmpty) return [];
+      
+      final List<dynamic> jsonList = jsonDecode(jsonString);
+      return jsonList.map((json) => PendingAction.fromJson(json)).toList();
+    } catch (e) {
+      debugPrint('Error getting pending actions: $e');
+      return [];
+    }
   }
 
   Future<void> clearPendingActions() async {
@@ -119,12 +196,16 @@ class OfflineDatabase {
   }
 
   Future<void> removePendingAction(String id) async {
-    final prefs = await SharedPreferences.getInstance();
-    final actions = await getPendingActions();
-    actions.removeWhere((a) => a.id == id);
-    
-    final jsonList = actions.map((a) => a.toJson()).toList();
-    await prefs.setString(_pendingActionsKey, jsonEncode(jsonList));
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final actions = await getPendingActions();
+      actions.removeWhere((a) => a.id == id);
+      
+      final jsonList = actions.map((a) => a.toJson()).toList();
+      await prefs.setString(_pendingActionsKey, jsonEncode(jsonList));
+    } catch (e) {
+      debugPrint('Error removing pending action: $e');
+    }
   }
 
   Future<DateTime?> getLastSyncTime() async {
@@ -159,9 +240,11 @@ class OfflineDatabase {
         await _executePendingAction(action);
         await removePendingAction(action.id);
         syncedCount++;
+        debugPrint('Synced action: ${action.type}');
       } catch (e) {
         failedCount++;
         errors.add('${action.type}: ${e.toString()}');
+        debugPrint('Failed to sync action ${action.type}: $e');
       }
     }
 
@@ -176,12 +259,13 @@ class OfflineDatabase {
       }
     } catch (e) {
       errors.add('Failed to refresh cache: ${e.toString()}');
+      debugPrint('Failed to refresh cache: $e');
     }
 
     return SyncResult(
       success: failedCount == 0,
       message: failedCount == 0 
-          ? 'Sync completed successfully' 
+          ? 'Sync completed successfully ($syncedCount actions synced)' 
           : 'Sync completed with $failedCount errors',
       syncedCount: syncedCount,
       failedCount: failedCount,
@@ -192,15 +276,25 @@ class OfflineDatabase {
   Future<void> _executePendingAction(PendingAction action) async {
     switch (action.type) {
       case PendingActionType.createProduct:
+        await ApiClient.dio.post('/products', data: action.data);
         break;
       case PendingActionType.updateProduct:
+        final productId = action.data['_id'] ?? action.data['id'];
+        await ApiClient.dio.put('/products/$productId', data: action.data);
         break;
       case PendingActionType.deleteProduct:
+        final productId = action.data['_id'] ?? action.data['id'];
+        await ApiClient.dio.delete('/products/$productId');
         break;
       case PendingActionType.createTransaction:
+        await ApiClient.dio.post('/transactions', data: action.data);
         break;
-      default:
-        throw Exception('Unknown action type: ${action.type}');
+      case PendingActionType.createCustomer:
+        await ApiClient.dio.post('/customers', data: action.data);
+        break;
+      case PendingActionType.createSupplier:
+        await ApiClient.dio.post('/suppliers', data: action.data);
+        break;
     }
   }
 
@@ -209,24 +303,26 @@ class OfflineDatabase {
       '_id': t.id,
       'type': t.type,
       'quantity': t.quantity,
-      'items': t.items.map((item) => {
-        '_id': item.id,
-        'product': {
-          '_id': item.product.id,
-          'productName': item.product.productName,
-          'cost': item.product.cost,
-          'price': item.product.price,
-          'SKU': item.product.sku,
-          'category': item.product.category,
-          'RAM': item.product.ram,
-          'date': item.product.date,
-          'GPU': item.product.gpu,
-          'color': item.product.color,
-          'processor': item.product.processor,
-          'quantity': item.product.quantity,
-          'image': item.product.image,
-        },
-        'quantity': item.quantity,
+      'items': t.items.map((item) {
+        return {
+          '_id': item.id,
+          'product': {
+            '_id': item.product.id,
+            'productName': item.product.productName,
+            'cost': item.product.cost,
+            'price': item.product.price,
+            'SKU': item.product.sku,
+            'category': item.product.category,
+            'RAM': item.product.ram,
+            'date': item.product.date,
+            'GPU': item.product.gpu,
+            'color': item.product.color,
+            'processor': item.product.processor,
+            'quantity': item.product.quantity,
+            'image': item.product.image,
+          },
+          'quantity': item.quantity,
+        };
       }).toList(),
       'supplier': t.supplier,
       'customer': t.customer,
@@ -244,6 +340,8 @@ class OfflineDatabase {
     await prefs.remove(_customersKey);
     await prefs.remove(_suppliersKey);
     await prefs.remove(_lastSyncKey);
+    await prefs.remove(_pendingActionsKey);
+    debugPrint('Cleared all offline cache');
   }
 }
 

@@ -52,13 +52,9 @@ class MyApp extends ConsumerWidget {
       
       title: 'Warehouse Management App',
       debugShowCheckedModeBanner: false,
-      theme: themeState.lightTheme,
+      theme: themeState.darkTheme,
       darkTheme: themeState.darkTheme,
-      themeMode: themeState.themeMode == AppThemeMode.light 
-          ? ThemeMode.light 
-          : themeState.themeMode == AppThemeMode.dark 
-              ? ThemeMode.dark 
-              : ThemeMode.system,
+      themeMode: ThemeMode.dark,
       supportedLocales: AppLocalizations.supportedLocales,
       localizationsDelegates: const [
         AppLocalizations.delegate,

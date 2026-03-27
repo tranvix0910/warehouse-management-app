@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../apis/transaction_api.dart';
 import '../models/transaction_models.dart';
 import '../models/pagination_models.dart';
+import '../services/offline_database.dart';
 
 class DateRange {
   final DateTime? start;
@@ -75,6 +77,7 @@ class TransactionState {
 class TransactionNotifier extends StateNotifier<TransactionState> {
   TransactionNotifier() : super(const TransactionState());
 
+  final _offlineDb = OfflineDatabase();
   static const int _pageSize = 20;
 
   Future<void> loadTransactions({bool refresh = false}) async {
@@ -86,53 +89,96 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
       currentPage: refresh ? 1 : state.currentPage,
     );
 
-    try {
-      final response = await GetAllTransactionsApi.getAllTransactions(
-        params: PaginationParams(
-          page: 1,
-          limit: _pageSize,
-          type: state.typeFilter,
-        ),
-      );
-      final transactionResponse = TransactionResponse.fromJson(response);
+    final isOnline = await _offlineDb.isOnline();
 
-      if (transactionResponse.success) {
-        final transactions = transactionResponse.data;
-        
-        PaginationInfo? pagination;
-        if (response['pagination'] != null) {
-          pagination = PaginationInfo.fromJson(response['pagination']);
+    if (isOnline) {
+      try {
+        final response = await GetAllTransactionsApi.getAllTransactions(
+          params: PaginationParams(
+            page: 1,
+            limit: _pageSize,
+            type: state.typeFilter,
+          ),
+        );
+        final transactionResponse = TransactionResponse.fromJson(response);
+
+        if (transactionResponse.success) {
+          final transactions = transactionResponse.data;
+          
+          // Cache transactions for offline use
+          await _offlineDb.cacheTransactions(transactions);
+          
+          PaginationInfo? pagination;
+          if (response['pagination'] != null) {
+            pagination = PaginationInfo.fromJson(response['pagination']);
+          }
+          
+          state = state.copyWith(
+            transactions: transactions,
+            filteredTransactions: _applyFilters(
+              transactions,
+              state.typeFilter,
+              state.dateRange,
+              state.searchQuery,
+            ),
+            isLoading: false,
+            currentPage: 1,
+            total: pagination?.total ?? transactions.length,
+            hasMore: pagination?.hasNextPage ?? false,
+          );
+        } else {
+          state = state.copyWith(
+            isLoading: false,
+            errorMessage: transactionResponse.message,
+          );
         }
-        
+      } catch (e) {
+        debugPrint('API error, trying offline cache: $e');
+        await _loadOfflineTransactions();
+      }
+    } else {
+      debugPrint('Offline mode - loading cached transactions');
+      await _loadOfflineTransactions();
+    }
+  }
+
+  Future<void> _loadOfflineTransactions() async {
+    try {
+      final cachedTransactions = await _offlineDb.getCachedTransactions();
+      if (cachedTransactions.isNotEmpty) {
         state = state.copyWith(
-          transactions: transactions,
+          transactions: cachedTransactions,
           filteredTransactions: _applyFilters(
-            transactions,
+            cachedTransactions,
             state.typeFilter,
             state.dateRange,
             state.searchQuery,
           ),
           isLoading: false,
-          currentPage: 1,
-          total: pagination?.total ?? transactions.length,
-          hasMore: pagination?.hasNextPage ?? false,
+          total: cachedTransactions.length,
+          hasMore: false,
         );
       } else {
         state = state.copyWith(
           isLoading: false,
-          errorMessage: transactionResponse.message,
+          errorMessage: 'No cached data available. Please connect to the internet.',
         );
       }
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
-        errorMessage: e.toString(),
+        errorMessage: 'Failed to load offline data: $e',
       );
     }
   }
 
   Future<void> loadMore() async {
     if (state.isLoadingMore || state.isLoading || !state.hasMore) return;
+
+    final isOnline = await _offlineDb.isOnline();
+    if (!isOnline) {
+      return;
+    }
 
     state = state.copyWith(isLoadingMore: true);
 
@@ -150,6 +196,9 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
       if (transactionResponse.success) {
         final newTransactions = transactionResponse.data;
         final allTransactions = [...state.transactions, ...newTransactions];
+        
+        // Update cache with all transactions
+        await _offlineDb.cacheTransactions(allTransactions);
         
         PaginationInfo? pagination;
         if (response['pagination'] != null) {
@@ -173,6 +222,20 @@ class TransactionNotifier extends StateNotifier<TransactionState> {
       }
     } catch (e) {
       state = state.copyWith(isLoadingMore: false);
+    }
+  }
+
+  Future<void> createTransactionOffline(Map<String, dynamic> transactionData) async {
+    final isOnline = await _offlineDb.isOnline();
+    
+    if (!isOnline) {
+      await _offlineDb.addPendingAction(PendingAction(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: PendingActionType.createTransaction,
+        data: transactionData,
+        createdAt: DateTime.now(),
+      ));
+      debugPrint('Transaction creation queued for sync');
     }
   }
 
