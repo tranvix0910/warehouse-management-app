@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../maps/warehouse_map_page.dart';
+import '../../services/product_service.dart';
 
 class DashboardMapPreview extends StatefulWidget {
   const DashboardMapPreview({super.key});
@@ -12,6 +13,8 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _glowAnimation;
+  List<ProductModel> _products = [];
+  bool _isLoading = true;
 
   @override
   void initState() {
@@ -21,9 +24,29 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
 
-    _glowAnimation = Tween<double>(begin: 0.3, end: 0.7).animate(
+    _glowAnimation = Tween<double>(begin: 0.4, end: 0.8).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
+
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final products = await ProductService.instance.getProducts();
+      if (mounted) {
+        setState(() {
+          _products = products;
+          _isLoading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
   }
 
   @override
@@ -62,133 +85,114 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
         return GestureDetector(
           onTap: _navigateToFullMap,
           child: Container(
-            height: 180,
+            height: 240,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF1A2744), Color(0xFF162032)],
+                colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: const Color(
-                  0xFF3B82F6,
-                ).withOpacity(_glowAnimation.value * 0.3),
+                color: const Color(0xFF3B82F6).withOpacity(_glowAnimation.value * 0.4),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(
-                    0xFF3B82F6,
-                  ).withOpacity(_glowAnimation.value * 0.08),
-                  blurRadius: 16,
-                  spreadRadius: 1,
+                  color: const Color(0xFF3B82F6).withOpacity(0.1),
+                  blurRadius: 20,
+                  spreadRadius: 2,
                 ),
               ],
             ),
             child: ClipRRect(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(24),
               child: Stack(
                 children: [
-                  // Mini shelf grid
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 50),
-                    child: _buildMiniShelfGrid(),
-                  ),
-
-                  // Gradient overlay at bottom
+                  // Decorative background pattern
                   Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
+                    top: -50,
+                    right: -50,
                     child: Container(
-                      height: 70,
+                      width: 150,
+                      height: 150,
                       decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [
-                            Colors.transparent,
-                            const Color(0xFF0F172A).withOpacity(0.98),
-                          ],
-                        ),
+                        shape: BoxShape.circle,
+                        color: const Color(0xFF3B82F6).withOpacity(0.05),
                       ),
                     ),
                   ),
 
-                  // Title & expand button
-                  Positioned(
-                    bottom: 12,
-                    left: 16,
-                    right: 16,
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  // Main Content
+                  Padding(
+                    padding: const EdgeInsets.all(20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
                           children: [
-                            Container(
-                              padding: const EdgeInsets.all(6),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF3B82F6).withOpacity(0.2),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: const Icon(
-                                Icons.warehouse_rounded,
-                                color: Color(0xFF3B82F6),
-                                size: 16,
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            const Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                            const Row(
                               children: [
+                                Icon(Icons.location_on, color: Color(0xFF3B82F6), size: 20),
+                                SizedBox(width: 8),
                                 Text(
                                   'Warehouse Layout',
                                   style: TextStyle(
                                     color: Colors.white,
-                                    fontSize: 14,
+                                    fontSize: 18,
                                     fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                Text(
-                                  'View shelf map & stock placement',
-                                  style: TextStyle(
-                                    color: Color(0xFF64748B),
-                                    fontSize: 11,
+                                    letterSpacing: 0.5,
                                   ),
                                 ),
                               ],
                             ),
-                          ],
-                        ),
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFF3B82F6).withOpacity(0.15),
-                            borderRadius: BorderRadius.circular(10),
-                            border: Border.all(
-                              color: const Color(0xFF3B82F6).withOpacity(0.3),
-                            ),
-                          ),
-                          child: const Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(
-                                Icons.open_in_full,
-                                color: Color(0xFF3B82F6),
-                                size: 14,
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF3B82F6).withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(20),
+                                border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.3)),
                               ),
-                              SizedBox(width: 4),
-                              Text(
-                                'Expand',
+                              child: const Text(
+                                'LIVE',
                                 style: TextStyle(
                                   color: Color(0xFF3B82F6),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w600,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
                                 ),
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 20),
+                        Expanded(
+                          child: _isLoading
+                              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                              : Row(
+                                  children: [
+                                    Expanded(child: _buildZoneCard('zone1', const Color(0xFF3B82F6))),
+                                    const SizedBox(width: 12),
+                                    Expanded(child: _buildZoneCard('zone2', const Color(0xFF10B981))),
+                                  ],
+                                ),
+                        ),
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            const Icon(Icons.info_outline, color: Color(0xFF64748B), size: 14),
+                            const SizedBox(width: 6),
+                            Text(
+                              'Tap to view detailed 3D shelf map',
+                              style: TextStyle(
+                                color: Colors.white.withOpacity(0.5),
+                                fontSize: 11,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.arrow_forward_ios, color: Color(0xFF3B82F6), size: 12),
+                          ],
                         ),
                       ],
                     ),
@@ -202,115 +206,95 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
     );
   }
 
-  Widget _buildMiniShelfGrid() {
-    // Mini representation of warehouse shelves
-    final shelfData = [
-      // Zone A row
-      [
-        {'status': 'full'},
-        {'status': 'normal'},
-        {'status': 'full'},
-        {'status': 'low'},
-        {'status': 'normal'},
-        {'status': 'full'},
-        {'status': 'empty'},
-        {'status': 'normal'},
-      ],
-      // Zone B row
-      [
-        {'status': 'normal'},
-        {'status': 'full'},
-        {'status': 'low'},
-        {'status': 'normal'},
-        {'status': 'empty'},
-        {'status': 'full'},
-        {'status': 'normal'},
-        {'status': 'full'},
-      ],
-      // Zone C row
-      [
-        {'status': 'empty'},
-        {'status': 'normal'},
-        {'status': 'full'},
-        {'status': 'normal'},
-        {'status': 'full'},
-        {'status': 'low'},
-        {'status': 'normal'},
-        {'status': 'empty'},
-      ],
-    ];
+  Widget _buildZoneCard(String zoneName, Color color) {
+    final zoneProducts = _products.where((p) => p.zone == zoneName).toList();
+    final count = zoneProducts.length;
 
-    final statusColors = {
-      'full': const Color(0xFF3B82F6),
-      'normal': const Color(0xFF22C55E),
-      'low': const Color(0xFFF59E0B),
-      'empty': const Color(0xFF475569).withOpacity(0.4),
-    };
-
-    return Column(
-      children: shelfData.asMap().entries.map((rowEntry) {
-        final rowIndex = rowEntry.key;
-        final row = rowEntry.value;
-        final zoneLabel = ['A', 'B', 'C'][rowIndex];
-
-        return Expanded(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 2),
-            child: Row(
-              children: [
-                // Zone label
-                SizedBox(
-                  width: 16,
-                  child: Text(
-                    zoneLabel,
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontSize: 9,
-                      fontWeight: FontWeight.bold,
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.05)),
+      ),
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: color,
+                  boxShadow: [
+                    BoxShadow(
+                      color: color.withOpacity(0.5),
+                      blurRadius: 4,
+                      spreadRadius: 1,
                     ),
-                  ),
+                  ],
                 ),
-                ...row.map((shelf) {
-                  final color =
-                      statusColors[shelf['status']] ?? const Color(0xFF475569);
-                  return Expanded(
-                    child: AnimatedBuilder(
-                      animation: _glowAnimation,
-                      builder: (context, child) {
-                        final isLow = shelf['status'] == 'low';
-                        return Container(
-                          margin: const EdgeInsets.all(1.5),
-                          decoration: BoxDecoration(
-                            color: color.withOpacity(
-                              isLow ? 0.3 + _glowAnimation.value * 0.3 : 0.3,
-                            ),
-                            borderRadius: BorderRadius.circular(3),
-                            border: Border.all(
-                              color: color.withOpacity(
-                                isLow ? 0.5 + _glowAnimation.value * 0.3 : 0.4,
-                              ),
-                              width: 0.5,
-                            ),
-                          ),
-                          child: Center(
-                            child: Icon(
-                              shelf['status'] == 'empty'
-                                  ? Icons.remove
-                                  : Icons.inventory_2,
-                              color: color.withOpacity(0.7),
-                              size: 10,
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  );
-                }),
-              ],
+              ),
+              const SizedBox(width: 8),
+              Text(
+                zoneName.toUpperCase(),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            '$count',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
             ),
           ),
-        );
-      }).toList(),
+          Text(
+            'Products',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 10,
+            ),
+          ),
+          const SizedBox(height: 8),
+          if (count > 0)
+            SizedBox(
+              height: 20,
+              child: Stack(
+                children: zoneProducts.take(3).toList().asMap().entries.map((entry) {
+                  return Positioned(
+                    left: entry.key * 12.0,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF0F172A), width: 1.5),
+                        color: color.withOpacity(0.2),
+                      ),
+                      child: ClipOval(
+                        child: entry.value.image.isNotEmpty
+                            ? Image.network(entry.value.image, fit: BoxFit.cover)
+                            : Icon(Icons.inventory_2, size: 10, color: color),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+        ],
+      ),
     );
   }
 }
+

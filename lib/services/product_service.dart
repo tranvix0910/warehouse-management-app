@@ -17,6 +17,7 @@ class ProductModel {
   final String gpu;
   final String color;
   final String processor;
+  final String zone;
 
   ProductModel({
     required this.id,
@@ -32,6 +33,7 @@ class ProductModel {
     required this.gpu,
     required this.color,
     required this.processor,
+    this.zone = 'Unassigned',
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
@@ -49,6 +51,7 @@ class ProductModel {
       gpu: json['GPU'] ?? '',
       color: json['color'] ?? '',
       processor: json['processor'] ?? '',
+      zone: json['zone'] ?? 'Unassigned',
     );
   }
 
@@ -67,6 +70,7 @@ class ProductModel {
       'GPU': gpu,
       'color': color,
       'processor': processor,
+      'zone': zone,
     };
   }
 }

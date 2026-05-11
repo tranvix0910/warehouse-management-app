@@ -54,7 +54,7 @@ class _WarehouseMapPageState extends State<WarehouseMapPage>
   final TransformationController _transformController =
       TransformationController();
 
-  final List<String> _zones = ['All', 'A', 'B', 'C', 'D'];
+  final List<String> _zones = ['All', 'zone1', 'zone2'];
 
   @override
   void initState() {
@@ -103,27 +103,26 @@ class _WarehouseMapPageState extends State<WarehouseMapPage>
   }
 
   List<ShelfRack> _distributeToShelves(List<ProductModel> products) {
-    final zones = ['A', 'B', 'C', 'D'];
+    final zones = ['zone1', 'zone2'];
     final List<ShelfRack> shelves = [];
-    int productIndex = 0;
 
     for (final zone in zones) {
-      for (int row = 1; row <= 3; row++) {
+      final zoneProducts = products.where((p) => p.zone == zone).toList();
+      int productIndex = 0;
+
+      for (int row = 1; row <= 2; row++) {
         for (int col = 1; col <= 4; col++) {
           final List<ProductModel> shelfProducts = [];
-          // Put 1-2 products per shelf
-          final count = (productIndex < products.length)
-              ? (col % 2 == 0 ? 2 : 1)
-              : 0;
-          for (int i = 0; i < count && productIndex < products.length; i++) {
-            shelfProducts.add(products[productIndex]);
+          // Simple distribution of products to shelves in this zone
+          if (productIndex < zoneProducts.length) {
+            shelfProducts.add(zoneProducts[productIndex]);
             productIndex++;
           }
 
           shelves.add(
             ShelfRack(
               id: '$zone$row$col',
-              label: '$zone-$row$col',
+              label: '${zone.toUpperCase()}-$row$col',
               zone: zone,
               row: row,
               col: col,
@@ -407,7 +406,7 @@ class _WarehouseMapPageState extends State<WarehouseMapPage>
                 ),
               ),
               child: Text(
-                zone == 'All' ? 'All Zones' : 'Zone $zone',
+                zone == 'All' ? 'All Zones' : zone.toUpperCase(),
                 style: TextStyle(
                   color: isSelected ? Colors.white : Colors.grey[400],
                   fontSize: 13,
@@ -520,9 +519,8 @@ class _WarehouseMapPageState extends State<WarehouseMapPage>
           // Floor plan grid
           InteractiveViewer(
             transformationController: _transformController,
-            minScale: 0.5,
-            maxScale: 3.0,
-            boundaryMargin: const EdgeInsets.all(80),
+            scaleEnabled: false,
+            panEnabled: false,
             child: Container(
               padding: const EdgeInsets.all(16),
               child: SingleChildScrollView(
@@ -655,10 +653,8 @@ class _WarehouseMapPageState extends State<WarehouseMapPage>
 
   Widget _buildZoneSection(String zone, List<ShelfRack> shelves) {
     final zoneColors = {
-      'A': const Color(0xFF3B82F6),
-      'B': const Color(0xFF8B5CF6),
-      'C': const Color(0xFF06B6D4),
-      'D': const Color(0xFFEC4899),
+      'zone1': const Color(0xFF3B82F6),
+      'zone2': const Color(0xFF10B981),
     };
     final color = zoneColors[zone] ?? const Color(0xFF3B82F6);
 
@@ -692,7 +688,7 @@ class _WarehouseMapPageState extends State<WarehouseMapPage>
                   borderRadius: BorderRadius.circular(6),
                 ),
                 child: Text(
-                  'ZONE $zone',
+                  zone.toUpperCase(),
                   style: TextStyle(
                     color: color,
                     fontSize: 12,

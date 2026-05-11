@@ -27,6 +27,7 @@ class _AddItemPageState extends State<AddItemPage> {
   final TextEditingController _processorController = TextEditingController();
   
   String? _rfidUUID;
+  String? _selectedZone;
   String? _selectedCategory;
   DateTime _selectedDate = DateTime.now();
   bool _isLoading = false;
@@ -117,6 +118,27 @@ class _AddItemPageState extends State<AddItemPage> {
               value: _rfidUUID,
               onTap: () => _showSKUInputMethodDialog(),
             ),
+            if (_selectedZone != null) ...[
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF10B981).withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on, color: Color(0xFF10B981), size: 16),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Detected at: $_selectedZone',
+                      style: const TextStyle(color: Color(0xFF10B981), fontSize: 13, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 16),
 
             // Category
@@ -858,6 +880,7 @@ class _AddItemPageState extends State<AddItemPage> {
     if (result != null && mounted) {
       setState(() {
         _rfidUUID = result;
+        _selectedZone = null;
       });
       
       showSuccessSnackTop(context, 'Barcode scanned: $result');
@@ -974,7 +997,7 @@ class _AddItemPageState extends State<AddItemPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Scanning RFID card from Firebase',
+              'Scanning RFID card from Firebase (Zone 1/2)',
               style: TextStyle(
                 color: Color(0xFF64748B),
                 fontSize: 12,
@@ -985,37 +1008,49 @@ class _AddItemPageState extends State<AddItemPage> {
       ),
     );
 
-    // Listen cho RFID data
-    final ref = FirebaseDatabase.instance.ref('sensors/rfid_uid');
+    // Listen cho sensors data (bao gồm uid_1 và uid_2)
+    final ref = FirebaseDatabase.instance.ref('sensors');
     late final subscription;
     
     subscription = ref.onValue.listen((event) async {
       if (!isScanning || !mounted) return;
       
       if (event.snapshot.exists && event.snapshot.value != null) {
-        final rfidUid = event.snapshot.value.toString();
+        final Map<dynamic, dynamic> data = event.snapshot.value as Map<dynamic, dynamic>;
         
-        // Kiểm tra nếu có data hợp lệ
-        if (rfidUid.isNotEmpty && 
-            rfidUid != 'null' && 
-            rfidUid != '""' && 
-            rfidUid != "''") {
-          
-          print('✅ RFID Data received: $rfidUid');
+        String? rfidUid;
+        String? detectedZone;
+
+        // Check uid_1 first
+        if (data.containsKey('uid_1') && data['uid_1'].toString().isNotEmpty && 
+            data['uid_1'].toString() != 'null' && data['uid_1'].toString() != '""') {
+          rfidUid = data['uid_1'].toString();
+          detectedZone = 'zone1';
+        } 
+        // Then check uid_2
+        else if (data.containsKey('uid_2') && data['uid_2'].toString().isNotEmpty && 
+            data['uid_2'].toString() != 'null' && data['uid_2'].toString() != '""') {
+          rfidUid = data['uid_2'].toString();
+          detectedZone = 'zone2';
+        }
+        
+        if (rfidUid != null) {
+          print('✅ RFID Data received from $detectedZone: $rfidUid');
           
           // Cancel subscription ngay
           isScanning = false;
           await subscription.cancel();
           
-          // Set rfid_uid = "null" và check_rfid = false sau khi nhận được UID
+          // Trả về check_rfid = false và uid_1, uid_2 = ""
           try {
             await FirebaseDatabase.instance.ref('sensors').update({
-              'rfid_uid': 'null',
               'check_rfid': false,
+              'uid_1': "",
+              'uid_2': "",
             });
-            print('🔴 RFID Scan stopped: rfid_uid = "null", check_rfid = false');
+            print('🔴 RFID Scan stopped: sensors reset');
           } catch (e) {
-            print('❌ Error setting rfid_uid and check_rfid: $e');
+            print('❌ Error resetting sensors: $e');
           }
           
           // Close dialog safely
@@ -1023,16 +1058,17 @@ class _AddItemPageState extends State<AddItemPage> {
             Navigator.pop(context);
           }
           
-          // Set SKU từ RFID
+          // Set SKU và Zone
           if (mounted) {
             setState(() {
               _rfidUUID = rfidUid;
+              _selectedZone = detectedZone;
             });
             
             // Show success
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
-                content: Text('✅ RFID Scanned: $_rfidUUID'),
+                content: Text('✅ RFID Scanned at $detectedZone: $_rfidUUID'),
                 backgroundColor: const Color(0xFF50C878),
                 duration: const Duration(seconds: 3),
               ),
@@ -1051,8 +1087,12 @@ class _AddItemPageState extends State<AddItemPage> {
       
       // Set check_rfid = false
       try {
-        await FirebaseDatabase.instance.ref('sensors').update({'check_rfid': false});
-        print('⏱️ Timeout: check_rfid = false');
+        await FirebaseDatabase.instance.ref('sensors').update({
+          'check_rfid': false,
+          'uid_1': "",
+          'uid_2': "",
+        });
+        print('⏱️ Timeout: sensors reset');
       } catch (e) {
         print('❌ Error: $e');
       }
@@ -1160,6 +1200,7 @@ class _AddItemPageState extends State<AddItemPage> {
           if (mounted) {
             setState(() {
               _rfidUUID = qrData;
+              _selectedZone = null;
             });
             
             // Show success
@@ -1311,6 +1352,7 @@ class _AddItemPageState extends State<AddItemPage> {
               // Set the manually entered RFID UUID
               setState(() {
                 _rfidUUID = rfidInput;
+                _selectedZone = null;
               });
 
               ScaffoldMessenger.of(context).showSnackBar(
@@ -1339,6 +1381,11 @@ class _AddItemPageState extends State<AddItemPage> {
     // Validate required fields
     if (_nameController.text.trim().isEmpty) {
       showErrorSnackTop(context, 'Please enter item name');
+      return;
+    }
+
+    if (_selectedImage == null) {
+      showErrorSnackTop(context, 'Please select or capture a product image');
       return;
     }
 
@@ -1428,6 +1475,7 @@ class _AddItemPageState extends State<AddItemPage> {
         gpu: _gpuController.text.trim(),
         color: _colorController.text.trim(),
         processor: _processorController.text.trim(),
+        zone: _selectedZone,
         barcode: _rfidUUID, // Using RFID UUID as barcode for now
         xFileImage: _selectedImage, // Pass XFile for both web and mobile
       );
