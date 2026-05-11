@@ -106,6 +106,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _loadProducts() async {
     try {
+      if (!mounted) return;
       setState(() {
         isLoading = true;
         errorMessage = null;
@@ -114,6 +115,7 @@ class _DashboardPageState extends State<DashboardPage> {
       final response = await GetAllProductsApi.getAllProducts();
       final List<dynamic> productsData = response['data'] ?? [];
 
+      if (!mounted) return;
       setState(() {
         // Chỉ lấy 5 sản phẩm đầu tiên
         items = productsData
@@ -123,6 +125,7 @@ class _DashboardPageState extends State<DashboardPage> {
         isLoading = false;
       });
     } catch (e) {
+      if (!mounted) return;
       setState(() {
         errorMessage = e.toString();
         isLoading = false;
@@ -132,6 +135,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Future<void> _loadTransactionInfo() async {
     try {
+      if (!mounted) return;
       setState(() {
         isLoadingTransactions = true;
       });
@@ -139,6 +143,7 @@ class _DashboardPageState extends State<DashboardPage> {
       final response = await GetAllTransactionsApi.getInfoTransaction();
       final data = response['data'];
 
+      if (!mounted) return;
       setState(() {
         totalTrans = data['totalTrans'] ?? 0;
         totalStockIn = data['totalStockIn'] ?? 0;
@@ -147,6 +152,7 @@ class _DashboardPageState extends State<DashboardPage> {
       });
     } catch (e) {
       print('Error loading transaction info: $e');
+      if (!mounted) return;
       setState(() {
         isLoadingTransactions = false;
       });
