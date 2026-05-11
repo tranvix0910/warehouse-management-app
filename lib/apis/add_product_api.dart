@@ -18,6 +18,7 @@ class AddProductApi {
     required String color,
     required String processor,
     String? barcode,
+    String? zone,
     File? image,
     XFile? xFileImage,
   }) async {
@@ -35,6 +36,7 @@ class AddProductApi {
         'GPU': gpu,
         'color': color,
         'processor': processor,
+        'zone': zone ?? 'Unassigned',
       });
 
       // Add barcode if provided

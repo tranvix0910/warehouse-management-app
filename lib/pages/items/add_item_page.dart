@@ -1475,6 +1475,7 @@ class _AddItemPageState extends State<AddItemPage> {
         gpu: _gpuController.text.trim(),
         color: _colorController.text.trim(),
         processor: _processorController.text.trim(),
+        zone: _selectedZone,
         barcode: _rfidUUID, // Using RFID UUID as barcode for now
         xFileImage: _selectedImage, // Pass XFile for both web and mobile
       );
