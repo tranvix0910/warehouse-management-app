@@ -11,6 +11,7 @@ import '../items/details_page.dart';
 import '../debug/firebase_debug_page.dart';
 import '../transactions/stock_in_page.dart';
 import '../transactions/stock_out_page.dart';
+import 'dashboard_map_preview.dart';
 
 class ItemModel {
   final String id;
@@ -137,7 +138,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
       final response = await GetAllTransactionsApi.getInfoTransaction();
       final data = response['data'];
-      
+
       setState(() {
         totalTrans = data['totalTrans'] ?? 0;
         totalStockIn = data['totalStockIn'] ?? 0;
@@ -183,6 +184,10 @@ class _DashboardPageState extends State<DashboardPage> {
                 },
                 child: EnvironmentPanel(service: FirebaseEnvironmentService()),
               ),
+              const SizedBox(height: 20),
+
+              // Warehouse Map Preview
+              const DashboardMapPreview(),
               const SizedBox(height: 20),
 
               // Action Buttons
@@ -302,8 +307,12 @@ class _DashboardPageState extends State<DashboardPage> {
           Row(
             children: [
               Expanded(child: _buildStatItem(totalTrans.toString(), 'Total')),
-              Expanded(child: _buildStatItem(totalStockIn.toString(), 'Stock In')),
-              Expanded(child: _buildStatItem(totalStockOut.toString(), 'Stock Out')),
+              Expanded(
+                child: _buildStatItem(totalStockIn.toString(), 'Stock In'),
+              ),
+              Expanded(
+                child: _buildStatItem(totalStockOut.toString(), 'Stock Out'),
+              ),
             ],
           ),
         ],
