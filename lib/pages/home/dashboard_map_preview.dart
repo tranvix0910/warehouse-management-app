@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../maps/warehouse_map_page.dart';
 import '../../services/product_service.dart';
+import '../../services/product_service.dart';
 
 class DashboardMapPreview extends StatefulWidget {
-  const DashboardMapPreview({super.key});
+  final List<ProductModel>? products;
+  const DashboardMapPreview({super.key, this.products});
 
   @override
   State<DashboardMapPreview> createState() => _DashboardMapPreviewState();
@@ -13,6 +15,8 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
     with SingleTickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _glowAnimation;
+  List<ProductModel> _products = [];
+  bool _isLoading = true;
   List<ProductModel> _products = [];
   bool _isLoading = true;
 
@@ -25,10 +29,27 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
     )..repeat(reverse: true);
 
     _glowAnimation = Tween<double>(begin: 0.4, end: 0.8).animate(
+    _glowAnimation = Tween<double>(begin: 0.4, end: 0.8).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    _loadProducts();
+    if (widget.products != null) {
+      _products = widget.products!;
+      _isLoading = false;
+    } else {
+      _loadProducts();
+    }
+  }
+
+  @override
+  void didUpdateWidget(DashboardMapPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.products != null) {
+      setState(() {
+        _products = widget.products!;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadProducts() async {
@@ -85,7 +106,7 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
         return GestureDetector(
           onTap: _navigateToFullMap,
           child: Container(
-            height: 240,
+            height: 250,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
@@ -109,20 +130,6 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
               borderRadius: BorderRadius.circular(24),
               child: Stack(
                 children: [
-                  // Decorative background pattern
-                  Positioned(
-                    top: -50,
-                    right: -50,
-                    child: Container(
-                      width: 150,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF3B82F6).withOpacity(0.05),
-                      ),
-                    ),
-                  ),
-
                   // Main Content
                   Padding(
                     padding: const EdgeInsets.all(20),
@@ -250,7 +257,7 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           Text(
             '$count',
             style: const TextStyle(
@@ -266,7 +273,7 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
               fontSize: 10,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           if (count > 0)
             SizedBox(
               height: 20,
