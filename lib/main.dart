@@ -20,6 +20,7 @@ import 'pages/profile/profile_page.dart';
 import 'pages/activity/activity_log_page.dart';
 import 'pages/ai/ai_chatbot_page.dart';
 import 'pages/ai/ai_report_page.dart';
+import 'pages/maps/warehouse_map_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -30,10 +31,7 @@ void main() async {
   await RoleService().loadUserRole();
   runApp(
     ProviderScope(
-      child: DevicePreview(
-        enabled: true,
-        builder: (context) => const MyApp(),
-      ),
+      child: DevicePreview(enabled: true, builder: (context) => const MyApp()),
     ),
   );
 }
@@ -49,7 +47,7 @@ class MyApp extends ConsumerWidget {
       useInheritedMediaQuery: true,
       locale: DevicePreview.locale(context),
       builder: DevicePreview.appBuilder,
-      
+
       title: 'Warehouse Management App',
       debugShowCheckedModeBanner: false,
       theme: themeState.darkTheme,
@@ -72,10 +70,13 @@ class MyApp extends ConsumerWidget {
         '/activity-log': (context) => const ActivityLogPage(),
         '/ai-chatbot': (context) => const AIChatbotPage(),
         '/ai-report': (context) => const AIReportPage(),
+        '/warehouse-map': (context) => const WarehouseMapPage(),
         '/otp': (context) {
-          final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+          final args =
+              ModalRoute.of(context)!.settings.arguments
+                  as Map<String, dynamic>;
           return OtpPage(email: args['email'], username: args['username']);
-        }
+        },
       },
     );
   }
