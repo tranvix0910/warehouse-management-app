@@ -94,12 +94,14 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   List<ItemModel> items = [];
+  List<ProductModel> _allProducts = [];
   bool isLoading = true;
   bool isLoadingTransactions = true;
   String? errorMessage;
   int totalTrans = 0;
   int totalStockIn = 0;
   int totalStockOut = 0;
+  int _refreshMapKey = 0;
 
   @override
   void initState() {
@@ -121,11 +123,15 @@ class _DashboardPageState extends State<DashboardPage> {
 
       if (!mounted) return;
       setState(() {
-        // Chỉ lấy 5 sản phẩm đầu tiên
+        // Lưu toàn bộ danh sách cho DashboardMapPreview
+        _allProducts = productsData.map((json) => ProductModel.fromJson(json)).toList();
+        
+        // Chỉ lấy 5 sản phẩm đầu tiên cho danh sách bên dưới
         items = productsData
             .take(5)
             .map((json) => ItemModel.fromJson(json))
             .toList();
+        _refreshMapKey++;
         isLoading = false;
       });
     } catch (e) {
@@ -197,7 +203,10 @@ class _DashboardPageState extends State<DashboardPage> {
               const SizedBox(height: 20),
 
               // Warehouse Map Preview
-              const DashboardMapPreview(),
+              DashboardMapPreview(
+                key: ValueKey('map_preview_$_refreshMapKey'),
+                products: _allProducts,
+              ),
               const SizedBox(height: 20),
 
               // Action Buttons

@@ -3,7 +3,8 @@ import '../maps/warehouse_map_page.dart';
 import '../../services/product_service.dart';
 
 class DashboardMapPreview extends StatefulWidget {
-  const DashboardMapPreview({super.key});
+  final List<ProductModel>? products;
+  const DashboardMapPreview({super.key, this.products});
 
   @override
   State<DashboardMapPreview> createState() => _DashboardMapPreviewState();
@@ -28,7 +29,23 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
 
-    _loadProducts();
+    if (widget.products != null) {
+      _products = widget.products!;
+      _isLoading = false;
+    } else {
+      _loadProducts();
+    }
+  }
+
+  @override
+  void didUpdateWidget(DashboardMapPreview oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.products != null) {
+      setState(() {
+        _products = widget.products!;
+        _isLoading = false;
+      });
+    }
   }
 
   Future<void> _loadProducts() async {
@@ -85,7 +102,7 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
         return GestureDetector(
           onTap: _navigateToFullMap,
           child: Container(
-            height: 240,
+            height: 250,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
                 colors: [Color(0xFF1E293B), Color(0xFF0F172A)],
