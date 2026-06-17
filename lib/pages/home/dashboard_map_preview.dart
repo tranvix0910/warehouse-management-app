@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../maps/warehouse_map_page.dart';
 import '../../services/product_service.dart';
-import '../../services/product_service.dart';
 
 class DashboardMapPreview extends StatefulWidget {
   final List<ProductModel>? products;
@@ -17,8 +16,6 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
   late Animation<double> _glowAnimation;
   List<ProductModel> _products = [];
   bool _isLoading = true;
-  List<ProductModel> _products = [];
-  bool _isLoading = true;
 
   @override
   void initState() {
@@ -28,7 +25,6 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
       duration: const Duration(milliseconds: 2000),
     )..repeat(reverse: true);
 
-    _glowAnimation = Tween<double>(begin: 0.4, end: 0.8).animate(
     _glowAnimation = Tween<double>(begin: 0.4, end: 0.8).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
