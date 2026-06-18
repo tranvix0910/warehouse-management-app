@@ -21,6 +21,7 @@ import 'pages/activity/activity_log_page.dart';
 import 'pages/ai/ai_chatbot_page.dart';
 import 'pages/ai/ai_report_page.dart';
 import 'pages/maps/warehouse_map_page.dart';
+import 'pages/home/settings_page.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,6 +71,7 @@ class MyApp extends ConsumerWidget {
         '/activity-log': (context) => const ActivityLogPage(),
         '/ai-chatbot': (context) => const AIChatbotPage(),
         '/ai-report': (context) => const AIReportPage(),
+        '/settings': (context) => const SettingsPage(),
         '/warehouse-map': (context) => const WarehouseMapPage(),
         '/otp': (context) {
           final args =

@@ -111,7 +111,9 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
               ),
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: const Color(0xFF3B82F6).withOpacity(_glowAnimation.value * 0.4),
+                color: const Color(
+                  0xFF3B82F6,
+                ).withOpacity(_glowAnimation.value * 0.4),
                 width: 1.5,
               ),
               boxShadow: [
@@ -126,20 +128,6 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
               borderRadius: BorderRadius.circular(24),
               child: Stack(
                 children: [
-                  // Decorative background pattern
-                  Positioned(
-                    top: -50,
-                    right: -50,
-                    child: Container(
-                      width: 150,
-                      height: 150,
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: const Color(0xFF3B82F6).withOpacity(0.05),
-                      ),
-                    ),
-                  ),
-
                   // Main Content
                   Padding(
                     padding: const EdgeInsets.all(20),
@@ -151,7 +139,11 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
                           children: [
                             const Row(
                               children: [
-                                Icon(Icons.location_on, color: Color(0xFF3B82F6), size: 20),
+                                Icon(
+                                  Icons.location_on,
+                                  color: Color(0xFF3B82F6),
+                                  size: 20,
+                                ),
                                 SizedBox(width: 8),
                                 Text(
                                   'Warehouse Layout',
@@ -165,11 +157,18 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
                               ],
                             ),
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF3B82F6).withOpacity(0.1),
                                 borderRadius: BorderRadius.circular(20),
-                                border: Border.all(color: const Color(0xFF3B82F6).withOpacity(0.3)),
+                                border: Border.all(
+                                  color: const Color(
+                                    0xFF3B82F6,
+                                  ).withOpacity(0.3),
+                                ),
                               ),
                               child: const Text(
                                 'LIVE',
@@ -185,19 +184,37 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
                         const SizedBox(height: 20),
                         Expanded(
                           child: _isLoading
-                              ? const Center(child: CircularProgressIndicator(strokeWidth: 2))
+                              ? const Center(
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
                               : Row(
                                   children: [
-                                    Expanded(child: _buildZoneCard('zone1', const Color(0xFF3B82F6))),
+                                    Expanded(
+                                      child: _buildZoneCard(
+                                        'zone1',
+                                        const Color(0xFF3B82F6),
+                                      ),
+                                    ),
                                     const SizedBox(width: 12),
-                                    Expanded(child: _buildZoneCard('zone2', const Color(0xFF10B981))),
+                                    Expanded(
+                                      child: _buildZoneCard(
+                                        'zone2',
+                                        const Color(0xFF10B981),
+                                      ),
+                                    ),
                                   ],
                                 ),
                         ),
                         const SizedBox(height: 12),
                         Row(
                           children: [
-                            const Icon(Icons.info_outline, color: Color(0xFF64748B), size: 14),
+                            const Icon(
+                              Icons.info_outline,
+                              color: Color(0xFF64748B),
+                              size: 14,
+                            ),
                             const SizedBox(width: 6),
                             Text(
                               'Tap to view detailed 3D shelf map',
@@ -208,7 +225,11 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
                               ),
                             ),
                             const Spacer(),
-                            const Icon(Icons.arrow_forward_ios, color: Color(0xFF3B82F6), size: 12),
+                            const Icon(
+                              Icons.arrow_forward_ios,
+                              color: Color(0xFF3B82F6),
+                              size: 12,
+                            ),
                           ],
                         ),
                       ],
@@ -267,7 +288,7 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
               ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
           Text(
             '$count',
             style: const TextStyle(
@@ -283,12 +304,14 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
               fontSize: 10,
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           if (count > 0)
             SizedBox(
               height: 20,
               child: Stack(
-                children: zoneProducts.take(3).toList().asMap().entries.map((entry) {
+                children: zoneProducts.take(3).toList().asMap().entries.map((
+                  entry,
+                ) {
                   return Positioned(
                     left: entry.key * 12.0,
                     child: Container(
@@ -296,12 +319,18 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
                       height: 20,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        border: Border.all(color: const Color(0xFF0F172A), width: 1.5),
+                        border: Border.all(
+                          color: const Color(0xFF0F172A),
+                          width: 1.5,
+                        ),
                         color: color.withOpacity(0.2),
                       ),
                       child: ClipOval(
                         child: entry.value.image.isNotEmpty
-                            ? Image.network(entry.value.image, fit: BoxFit.cover)
+                            ? Image.network(
+                                entry.value.image,
+                                fit: BoxFit.cover,
+                              )
                             : Icon(Icons.inventory_2, size: 10, color: color),
                       ),
                     ),
@@ -314,4 +343,3 @@ class _DashboardMapPreviewState extends State<DashboardMapPreview>
     );
   }
 }
-

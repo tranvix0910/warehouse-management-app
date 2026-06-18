@@ -131,11 +131,16 @@ class AIApi {
     }
   }
 
+  // Gửi tin nhắn tới AI chatbot, timeout dài hơn vì phải chờ Gemini sinh text
   static Future<String> chat(String message) async {
     try {
       final response = await ApiClient.dio.post(
         '/ai/chat',
         data: {'message': message},
+        options: Options(
+          connectTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -154,11 +159,16 @@ class AIApi {
     }
   }
 
+  // Tạo báo cáo AI, timeout dài hơn vì phải chờ Gemini xử lý dữ liệu lớn
   static Future<AIReportData> generateReport({required String period}) async {
     try {
       final response = await ApiClient.dio.get(
         '/ai/report',
         queryParameters: {'period': period},
+        options: Options(
+          connectTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
