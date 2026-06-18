@@ -680,6 +680,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return Column(children: items.map((item) => _buildItemCard(item)).toList());
   }
 
+  // Hàm xây dựng thẻ hiển thị thông tin sản phẩm trên Dashboard
   Widget _buildItemCard(ItemModel item) {
     return GestureDetector(
       onTap: () {
@@ -761,24 +762,12 @@ class _DashboardPageState extends State<DashboardPage> {
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
                   const SizedBox(height: 4),
-                  Row(
-                    children: [
-                      Text(
-                        'Cost: ${item.cost}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                      const SizedBox(width: 16),
-                      Text(
-                        'Price: ${item.price}',
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    'Price: ${item.price}',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 12,
+                    ),
                   ),
                 ],
               ),

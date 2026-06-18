@@ -137,7 +137,10 @@ class AIApi {
       final response = await ApiClient.dio.post(
         '/ai/chat',
         data: {'message': message},
-        options: Options(receiveTimeout: const Duration(seconds: 60)),
+        options: Options(
+          connectTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
@@ -162,7 +165,10 @@ class AIApi {
       final response = await ApiClient.dio.get(
         '/ai/report',
         queryParameters: {'period': period},
-        options: Options(receiveTimeout: const Duration(seconds: 60)),
+        options: Options(
+          connectTimeout: const Duration(seconds: 60),
+          receiveTimeout: const Duration(seconds: 60),
+        ),
       );
 
       if (response.statusCode == 200 && response.data['success'] == true) {
