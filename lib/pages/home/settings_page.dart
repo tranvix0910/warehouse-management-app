@@ -111,17 +111,30 @@ class _SettingsPageState extends ConsumerState<SettingsPage> {
                 ),
                 child: Row(
                   children: [
+                    // Hiển thị ảnh đại diện của người dùng (avatar) hoặc biểu tượng mặc định theo vai trò (role)
                     Container(
                       width: 50,
                       height: 50,
                       decoration: BoxDecoration(
                         color: _roleService.getRoleColor(_roleService.currentRole),
-                        borderRadius: BorderRadius.circular(25),
+                        shape: BoxShape.circle,
                       ),
-                      child: Icon(
-                        _roleService.getRoleIcon(_roleService.currentRole),
-                        color: Colors.white,
-                        size: 24,
+                      child: ClipOval(
+                        child: authState.avatar != null && authState.avatar!.isNotEmpty
+                            ? Image.network(
+                                authState.avatar!,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) => Icon(
+                                  _roleService.getRoleIcon(_roleService.currentRole),
+                                  color: Colors.white,
+                                  size: 24,
+                                ),
+                              )
+                            : Icon(
+                                _roleService.getRoleIcon(_roleService.currentRole),
+                                color: Colors.white,
+                                size: 24,
+                              ),
                       ),
                     ),
                     const SizedBox(width: 16),

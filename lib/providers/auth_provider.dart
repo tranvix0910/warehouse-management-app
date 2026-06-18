@@ -7,6 +7,7 @@ class AuthState {
   final String? userId;
   final String? username;
   final String? email;
+  final String? avatar;
   final String? errorMessage;
 
   const AuthState({
@@ -15,6 +16,7 @@ class AuthState {
     this.userId,
     this.username,
     this.email,
+    this.avatar,
     this.errorMessage,
   });
 
@@ -24,6 +26,7 @@ class AuthState {
     String? userId,
     String? username,
     String? email,
+    String? avatar,
     String? errorMessage,
   }) {
     return AuthState(
@@ -32,6 +35,7 @@ class AuthState {
       userId: userId ?? this.userId,
       username: username ?? this.username,
       email: email ?? this.email,
+      avatar: avatar ?? this.avatar,
       errorMessage: errorMessage,
     );
   }
@@ -53,9 +57,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
         state = state.copyWith(
           isAuthenticated: true,
           isLoading: false,
-          userId: user['id'],
+          userId: user['id'] ?? user['_id'],
           username: user['username'],
           email: user['email'],
+          avatar: user['avatar'],
         );
       } else {
         state = state.copyWith(
@@ -82,9 +87,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     
     state = state.copyWith(
       isAuthenticated: true,
-      userId: user['id'],
+      userId: user['id'] ?? user['_id'],
       username: user['username'],
       email: user['email'],
+      avatar: user['avatar'],
     );
   }
 
@@ -99,9 +105,10 @@ class AuthNotifier extends StateNotifier<AuthState> {
     await TokenStorage.saveUser(user);
     
     state = state.copyWith(
-      userId: user['id'],
+      userId: user['id'] ?? user['_id'],
       username: user['username'],
       email: user['email'],
+      avatar: user['avatar'],
     );
   }
 }

@@ -86,14 +86,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     }
   }
 
+  // Lưu thông tin hồ sơ của người dùng (tên, số điện thoại, địa chỉ và ảnh đại diện mới nếu có)
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     
     setState(() => _isLoading = true);
     
     try {
+      String? newAvatarUrl;
       if (_newAvatarXFile != null) {
-        await UserApi.uploadAvatarXFile(_newAvatarXFile!);
+        final result = await UserApi.uploadAvatarXFile(_newAvatarXFile!);
+        if (result['success'] == true && result['data'] != null) {
+          newAvatarUrl = result['data']['avatar'];
+        }
       }
       
       await UserApi.updateProfile(
@@ -107,7 +112,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         user['username'] = _usernameController.text.trim();
         user['phone'] = _phoneController.text.trim();
         user['address'] = _addressController.text.trim();
+        if (newAvatarUrl != null) {
+          user['avatar'] = newAvatarUrl;
+        }
         await TokenStorage.saveUser(user);
+        ref.read(authNotifierProvider.notifier).updateUser(user);
       }
       
       if (mounted) {
@@ -116,6 +125,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           _isEditing = false;
           _newAvatarXFile = null;
           _newAvatarBytes = null;
+          if (newAvatarUrl != null) {
+            _avatarUrl = newAvatarUrl;
+          }
         });
       }
     } catch (e) {
