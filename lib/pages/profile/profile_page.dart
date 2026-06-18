@@ -86,14 +86,19 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     }
   }
 
+  // Lưu thông tin hồ sơ của người dùng (tên, số điện thoại, địa chỉ và ảnh đại diện mới nếu có)
   Future<void> _saveProfile() async {
     if (!_formKey.currentState!.validate()) return;
     
     setState(() => _isLoading = true);
     
     try {
+      String? newAvatarUrl;
       if (_newAvatarXFile != null) {
-        await UserApi.uploadAvatarXFile(_newAvatarXFile!);
+        final result = await UserApi.uploadAvatarXFile(_newAvatarXFile!);
+        if (result['success'] == true && result['data'] != null) {
+          newAvatarUrl = result['data']['avatar'];
+        }
       }
       
       await UserApi.updateProfile(
@@ -107,7 +112,11 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
         user['username'] = _usernameController.text.trim();
         user['phone'] = _phoneController.text.trim();
         user['address'] = _addressController.text.trim();
+        if (newAvatarUrl != null) {
+          user['avatar'] = newAvatarUrl;
+        }
         await TokenStorage.saveUser(user);
+        ref.read(authNotifierProvider.notifier).updateUser(user);
       }
       
       if (mounted) {
@@ -116,6 +125,9 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
           _isEditing = false;
           _newAvatarXFile = null;
           _newAvatarBytes = null;
+          if (newAvatarUrl != null) {
+            _avatarUrl = newAvatarUrl;
+          }
         });
       }
     } catch (e) {
@@ -129,6 +141,7 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     }
   }
 
+  // Hiển thị hộp thoại thay đổi mật khẩu của người dùng với các trường nhập liệu và yêu cầu mật khẩu
   void _showChangePasswordDialog() {
     final currentPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
@@ -142,17 +155,27 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           backgroundColor: const Color(0xFF1E293B),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          titlePadding: const EdgeInsets.fromLTRB(20, 20, 20, 8),
           title: const Row(
             children: [
-              Icon(Icons.lock_outline, color: Color(0xFF3B82F6)),
-              SizedBox(width: 12),
-              Text('Change Password', style: TextStyle(color: Colors.white)),
+              Icon(Icons.lock_outline, color: Color(0xFF3B82F6), size: 22),
+              SizedBox(width: 8),
+              Text(
+                'Change Password',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
             ],
           ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 _buildPasswordField(
                   controller: currentPasswordController,
@@ -160,14 +183,14 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                   obscure: obscureCurrent,
                   onToggle: () => setDialogState(() => obscureCurrent = !obscureCurrent),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 _buildPasswordField(
                   controller: newPasswordController,
                   label: 'New Password',
                   obscure: obscureNew,
                   onToggle: () => setDialogState(() => obscureNew = !obscureNew),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 10),
                 _buildPasswordField(
                   controller: confirmPasswordController,
                   label: 'Confirm New Password',
@@ -176,46 +199,91 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
                 ),
                 const SizedBox(height: 12),
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF0F172A),
-                    borderRadius: BorderRadius.circular(8),
+                    color: const Color(0xFF3B82F6).withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: const Color(0xFF3B82F6).withOpacity(0.15),
+                      width: 1,
+                    ),
                   ),
-                  child: const Column(
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        'Password requirements:',
-                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.info_outline,
+                            color: const Color(0xFF3B82F6).withOpacity(0.8),
+                            size: 14,
+                          ),
+                          const SizedBox(width: 6),
+                          const Text(
+                            'Password requirements:',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
-                      SizedBox(height: 4),
-                      Text('• At least 8 characters', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                      Text('• One uppercase letter', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                      Text('• One lowercase letter', style: TextStyle(color: Colors.grey, fontSize: 11)),
-                      Text('• One number', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(child: _buildRequirementItem('Min 8 characters')),
+                          Expanded(child: _buildRequirementItem('1 uppercase letter')),
+                        ],
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Expanded(child: _buildRequirementItem('1 lowercase letter')),
+                          Expanded(child: _buildRequirementItem('1 number')),
+                        ],
+                      ),
                     ],
                   ),
                 ),
               ],
             ),
           ),
+          actionsPadding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
-            ),
-            ElevatedButton(
-              onPressed: () => _changePassword(
-                context,
-                currentPasswordController.text,
-                newPasswordController.text,
-                confirmPasswordController.text,
-              ),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF3B82F6),
-                foregroundColor: Colors.white,
-              ),
-              child: const Text('Change Password'),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.white.withOpacity(0.1)),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: () => _changePassword(
+                      context,
+                      currentPasswordController.text,
+                      newPasswordController.text,
+                      confirmPasswordController.text,
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF3B82F6),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      elevation: 0,
+                    ),
+                    child: const Text('Change', style: TextStyle(fontWeight: FontWeight.bold)),
+                  ),
+                ),
+              ],
             ),
           ],
         ),
@@ -223,29 +291,62 @@ class _ProfilePageState extends ConsumerState<ProfilePage> {
     );
   }
 
+  // Tạo một dòng hiển thị yêu cầu mật khẩu kèm biểu tượng check nhỏ
+  Widget _buildRequirementItem(String text) {
+    return Row(
+      children: [
+        Icon(
+          Icons.check_circle_outline,
+          color: Colors.white.withOpacity(0.3),
+          size: 12,
+        ),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(
+            text,
+            style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 10),
+            overflow: TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+
+  // Xây dựng trường nhập liệu mật khẩu có nút ẩn/hiển thị mật khẩu và thiết kế đồng bộ
   Widget _buildPasswordField({
     required TextEditingController controller,
     required String label,
     required bool obscure,
     required VoidCallback onToggle,
   }) {
-    return TextField(
+    return TextFormField(
       controller: controller,
       obscureText: obscure,
-      style: const TextStyle(color: Colors.white),
+      style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: Colors.grey),
+        labelStyle: const TextStyle(color: Colors.grey, fontSize: 13),
+        floatingLabelStyle: const TextStyle(color: Color(0xFF3B82F6), fontSize: 13),
         filled: true,
         fillColor: const Color(0xFF0F172A),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide.none,
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.white.withOpacity(0.1), width: 1),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF3B82F6), width: 1.5),
         ),
         suffixIcon: IconButton(
           icon: Icon(
             obscure ? Icons.visibility_off : Icons.visibility,
             color: Colors.grey,
+            size: 18,
           ),
           onPressed: onToggle,
         ),
