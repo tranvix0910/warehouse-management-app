@@ -1,9 +1,14 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:firebase_database/firebase_database.dart';
 import 'package:intl/intl.dart';
 import 'suppliers_page.dart';
 import 'items_selection_page.dart';
 import '../../apis/add_transaction_api.dart';
 import '../../utils/snack_bar.dart';
+import '../../services/barcode_scanner_service.dart';
+import '../../services/product_service.dart';
+// import '../../models/product_model.dart';
 
 class StockInPage extends StatefulWidget {
   const StockInPage({super.key});
@@ -64,6 +69,11 @@ class _StockInPageState extends State<StockInPage> {
                   
                   // Items
                   _buildItemsSection(),
+
+                  const SizedBox(height: 24),
+
+                  // Scan section (IoT: Camera / QR Firebase / RFID Firebase)
+                  _buildScanSection(),
                 ],
               ),
             ),
@@ -480,7 +490,571 @@ class _StockInPageState extends State<StockInPage> {
     });
   }
 
-  
+
+  // ========================
+  // Khu vực quét sản phẩm qua IoT
+  // ========================
+
+  // Widget hiển thị các nút quét: Camera, QR Firebase, RFID Firebase
+  Widget _buildScanSection() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            const Color(0xFF10B981).withOpacity(0.1),
+            const Color(0xFF3B82F6).withOpacity(0.05),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: const Color(0xFF10B981).withOpacity(0.3),
+          width: 1,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(
+                  Icons.qr_code_scanner,
+                  color: Color(0xFF10B981),
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Scan to Add Product',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    SizedBox(height: 2),
+                    Text(
+                      'Scan QR/Barcode to quickly add items',
+                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _buildScanButton(
+                  icon: Icons.qr_code_scanner,
+                  label: 'Camera Scan',
+                  color: const Color(0xFFF59E0B),
+                  onTap: _scanBarcodeForStockIn,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildScanButton(
+                  icon: Icons.qr_code,
+                  label: 'QR (Firebase)',
+                  color: const Color(0xFF10B981),
+                  onTap: _scanQRCodeForStockIn,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _buildScanButton(
+                  icon: Icons.credit_card,
+                  label: 'RFID',
+                  color: const Color(0xFF3B82F6),
+                  onTap: _scanRFIDForStockIn,
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Widget nút quét với icon và label
+  Widget _buildScanButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 10),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.15),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: color, size: 20),
+            const SizedBox(height: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 10,
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Quét mã vạch/QR bằng camera điện thoại
+  void _scanBarcodeForStockIn() async {
+    if (kIsWeb) {
+      showErrorSnackTop(context, 'Barcode scanning is not supported on web');
+      return;
+    }
+    final result = await BarcodeScannerService.scanBarcode(context);
+    if (result != null && mounted) {
+      await _findAndAddProduct(result);
+    }
+  }
+
+  // Quét mã QR thông qua thiết bị IoT kết nối Firebase Realtime Database
+  void _scanQRCodeForStockIn() async {
+    try {
+      await FirebaseDatabase.instance.ref('sensors').update({'check_qr': true});
+    } catch (e) {
+      if (mounted) showErrorSnackTop(context, 'Error starting QR scan');
+      return;
+    }
+
+    bool isScanning = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Color(0xFF10B981)),
+            const SizedBox(height: 16),
+            const Text('Waiting for QR Code...', style: TextStyle(color: Colors.white, fontSize: 16)),
+            const SizedBox(height: 8),
+            const Text('Scanning QR code from Firebase', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () { isScanning = false; Navigator.pop(ctx); },
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFFEF4444))),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final ref = FirebaseDatabase.instance.ref('sensors/qr_data');
+    late final subscription;
+
+    subscription = ref.onValue.listen((event) async {
+      if (!isScanning || !mounted) return;
+      if (event.snapshot.exists && event.snapshot.value != null) {
+        final qrData = event.snapshot.value.toString();
+        if (qrData.isNotEmpty && qrData != 'null' && qrData != '""' && qrData != "''") {
+          isScanning = false;
+          await subscription.cancel();
+          try {
+            await FirebaseDatabase.instance.ref('sensors').update({'check_qr': false, 'qr_data': 'null'});
+          } catch (_) {}
+          if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+          if (mounted) await _findAndAddProduct(qrData);
+        }
+      }
+    });
+
+    // Timeout 30 giây
+    Future.delayed(const Duration(seconds: 30), () async {
+      if (!isScanning || !mounted) return;
+      isScanning = false;
+      await subscription.cancel();
+      try {
+        await FirebaseDatabase.instance.ref('sensors').update({'check_qr': false, 'qr_data': 'null'});
+      } catch (_) {}
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+        showErrorSnackTop(context, 'QR Scan timeout. Please try again.');
+      }
+    });
+  }
+
+  // Quét thẻ RFID thông qua thiết bị IoT kết nối Firebase Realtime Database
+  void _scanRFIDForStockIn() async {
+    try {
+      await FirebaseDatabase.instance.ref('sensors').update({'check_rfid': true});
+    } catch (e) {
+      if (mounted) showErrorSnackTop(context, 'Error starting RFID scan');
+      return;
+    }
+
+    bool isScanning = true;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const CircularProgressIndicator(color: Color(0xFF3B82F6)),
+            const SizedBox(height: 16),
+            const Text('Waiting for RFID...', style: TextStyle(color: Colors.white, fontSize: 16)),
+            const SizedBox(height: 8),
+            const Text('Scanning RFID card from Firebase (Zone 1/2)', style: TextStyle(color: Color(0xFF64748B), fontSize: 12)),
+            const SizedBox(height: 16),
+            TextButton(
+              onPressed: () { isScanning = false; Navigator.pop(ctx); },
+              child: const Text('Cancel', style: TextStyle(color: Color(0xFFEF4444))),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    final ref = FirebaseDatabase.instance.ref('sensors');
+    late final subscription;
+
+    subscription = ref.onValue.listen((event) async {
+      if (!isScanning || !mounted) return;
+      if (event.snapshot.exists && event.snapshot.value != null) {
+        final Map<dynamic, dynamic> data = event.snapshot.value as Map<dynamic, dynamic>;
+        String? rfidUid;
+
+        if (data.containsKey('uid_1') && data['uid_1'].toString().isNotEmpty && 
+            data['uid_1'].toString() != 'null' && data['uid_1'].toString() != '""') {
+          rfidUid = data['uid_1'].toString();
+        } else if (data.containsKey('uid_2') && data['uid_2'].toString().isNotEmpty && 
+            data['uid_2'].toString() != 'null' && data['uid_2'].toString() != '""') {
+          rfidUid = data['uid_2'].toString();
+        }
+
+        if (rfidUid != null && rfidUid.isNotEmpty) {
+          isScanning = false;
+          await subscription.cancel();
+          try {
+            await FirebaseDatabase.instance.ref('sensors').update({
+              'uid_1': '',
+              'uid_2': '',
+              'check_rfid': false,
+            });
+          } catch (_) {}
+          if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+          if (mounted) await _findAndAddProduct(rfidUid);
+        }
+      }
+    });
+
+    // Timeout 30 giây
+    Future.delayed(const Duration(seconds: 30), () async {
+      if (!isScanning || !mounted) return;
+      isScanning = false;
+      await subscription.cancel();
+      try {
+        await FirebaseDatabase.instance.ref('sensors').update({
+          'uid_1': '',
+          'uid_2': '',
+          'check_rfid': false,
+        });
+      } catch (_) {}
+      if (mounted && Navigator.canPop(context)) {
+        Navigator.pop(context);
+        showErrorSnackTop(context, 'RFID Scan timeout. Please try again.');
+      }
+    });
+  }
+
+  // Tra cứu sản phẩm theo mã quét (SKU hoặc RFID Tag ID) và thêm vào danh sách hàng nhập
+  Future<void> _findAndAddProduct(String scannedCode) async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const AlertDialog(
+        backgroundColor: Color(0xFF1E293B),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            CircularProgressIndicator(color: Color(0xFF3B82F6)),
+            SizedBox(height: 16),
+            Text('Finding product...', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+      ),
+    );
+
+    try {
+      final products = await ProductService.instance.getProducts(forceRefresh: true);
+      if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+
+      final matched = products.cast<ProductModel?>().firstWhere(
+        (p) => p!.sku.toLowerCase() == scannedCode.toLowerCase() || 
+               p.sku == scannedCode ||
+               p.rfidTagId?.toLowerCase() == scannedCode.toLowerCase() ||
+               p.rfidTagId == scannedCode,
+        orElse: () => null,
+      );
+
+      if (matched == null) {
+        if (mounted) _showProductNotFoundDialog(scannedCode);
+        return;
+      }
+
+      final existingIdx = selectedItems.indexWhere((i) => i['productId'] == matched.id);
+      if (existingIdx >= 0) {
+        if (mounted) _showUpdateQuantityDialog(matched, existingIdx);
+      } else {
+        if (mounted) _showProductFoundDialog(matched);
+      }
+    } catch (e) {
+      if (mounted && Navigator.canPop(context)) Navigator.pop(context);
+      if (mounted) showErrorSnackTop(context, 'Error finding product: ${e.toString().replaceFirst("Exception: ", "")}');
+    }
+  }
+
+  // Hiển thị hộp thoại khi không tìm thấy sản phẩm với mã đã quét
+  void _showProductNotFoundDialog(String code) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEF4444).withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: const Icon(Icons.search_off, color: Color(0xFFEF4444), size: 24),
+            ),
+            const SizedBox(width: 12),
+            const Text('Product Not Found', style: TextStyle(color: Colors.white, fontSize: 16)),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('No product matches the scanned code:', style: TextStyle(color: Colors.grey[400], fontSize: 14)),
+            const SizedBox(height: 8),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: const Color(0xFF0F172A), borderRadius: BorderRadius.circular(8)),
+              child: Text(code, style: const TextStyle(color: Colors.white, fontFamily: 'monospace', fontSize: 13)),
+            ),
+            const SizedBox(height: 8),
+            Text('Make sure the product exists and the SKU matches.', style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('OK', style: TextStyle(color: Color(0xFF3B82F6))),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Hiển thị hộp thoại nhập số lượng khi tìm thấy sản phẩm mới qua quét mã
+  void _showProductFoundDialog(ProductModel product) {
+    final qtyController = TextEditingController(text: '1');
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF1E293B),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 24),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(child: Text('Product Found', style: TextStyle(color: Colors.white, fontSize: 16))),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF0F172A),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: const Color(0xFF334155)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 45, height: 45,
+                      decoration: BoxDecoration(color: const Color(0xFF334155), borderRadius: BorderRadius.circular(8)),
+                      child: product.image.startsWith('http')
+                          ? ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(product.image, fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.inventory_2, color: Color(0xFF64748B), size: 22)),
+                            )
+                          : const Icon(Icons.inventory_2, color: Color(0xFF64748B), size: 22),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(product.name, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                          const SizedBox(height: 4),
+                          Text('SKU: ${product.sku}', style: TextStyle(color: Colors.grey[400], fontSize: 12)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: qtyController,
+                keyboardType: TextInputType.number,
+                style: const TextStyle(color: Colors.white),
+                decoration: InputDecoration(
+                  labelText: 'Quantity to import',
+                  labelStyle: const TextStyle(color: Colors.grey),
+                  filled: true,
+                  fillColor: const Color(0xFF0F172A),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final qty = int.tryParse(qtyController.text.trim()) ?? 0;
+                if (qty <= 0) return;
+                setState(() {
+                  selectedItems.add({
+                    'productId': product.id,
+                    'name': product.name,
+                    'image': product.image,
+                    'sku': product.sku,
+                    'quantity': qty,
+                  });
+                });
+                Navigator.pop(ctx);
+                showSuccessSnackTop(context, '${product.name} added to stock in list');
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF10B981),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('Add'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Hiển thị hộp thoại cập nhật số lượng khi sản phẩm đã có trong danh sách nhập
+  void _showUpdateQuantityDialog(ProductModel product, int existingIdx) {
+    final current = (selectedItems[existingIdx]['quantity'] as num?)?.toInt() ?? 1;
+    final qtyController = TextEditingController(text: current.toString());
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E293B),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Update Quantity', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('${product.name} is already in the list.', style: TextStyle(color: Colors.grey[400], fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: qtyController,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                labelText: 'New quantity',
+                labelStyle: const TextStyle(color: Colors.grey),
+                filled: true,
+                fillColor: const Color(0xFF0F172A),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                  borderSide: const BorderSide(color: Color(0xFF10B981), width: 1.5),
+                ),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel', style: TextStyle(color: Colors.grey)),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              final qty = int.tryParse(qtyController.text.trim()) ?? 0;
+              if (qty <= 0) return;
+              setState(() { selectedItems[existingIdx]['quantity'] = qty; });
+              Navigator.pop(ctx);
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF10B981),
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Update'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future<void> _saveStockIn() async {
     if (selectedSupplier == null) {

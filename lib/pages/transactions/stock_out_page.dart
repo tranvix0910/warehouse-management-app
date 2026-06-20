@@ -785,7 +785,7 @@ class _StockOutPageState extends State<StockOutPage> {
             ),
             const SizedBox(height: 8),
             const Text(
-              'Scanning RFID card from Firebase',
+              'Scanning RFID card from Firebase (Zone 1/2)',
               style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
             ),
             const SizedBox(height: 16),
@@ -804,23 +804,31 @@ class _StockOutPageState extends State<StockOutPage> {
       ),
     );
 
-    final ref = FirebaseDatabase.instance.ref('sensors/rfid_uid');
+    final ref = FirebaseDatabase.instance.ref('sensors');
     late final subscription;
 
     subscription = ref.onValue.listen((event) async {
       if (!isScanning || !mounted) return;
       if (event.snapshot.exists && event.snapshot.value != null) {
-        final rfidUid = event.snapshot.value.toString();
-        if (rfidUid.isNotEmpty &&
-            rfidUid != 'null' &&
-            rfidUid != '""' &&
-            rfidUid != "''") {
+        final Map<dynamic, dynamic> data = event.snapshot.value as Map<dynamic, dynamic>;
+        String? rfidUid;
+
+        if (data.containsKey('uid_1') && data['uid_1'].toString().isNotEmpty && 
+            data['uid_1'].toString() != 'null' && data['uid_1'].toString() != '""') {
+          rfidUid = data['uid_1'].toString();
+        } else if (data.containsKey('uid_2') && data['uid_2'].toString().isNotEmpty && 
+            data['uid_2'].toString() != 'null' && data['uid_2'].toString() != '""') {
+          rfidUid = data['uid_2'].toString();
+        }
+
+        if (rfidUid != null && rfidUid.isNotEmpty) {
           isScanning = false;
           await subscription.cancel();
 
           try {
             await FirebaseDatabase.instance.ref('sensors').update({
-              'rfid_uid': 'null',
+              'uid_1': '',
+              'uid_2': '',
               'check_rfid': false,
             });
           } catch (_) {}
@@ -838,6 +846,8 @@ class _StockOutPageState extends State<StockOutPage> {
       await subscription.cancel();
       try {
         await FirebaseDatabase.instance.ref('sensors').update({
+          'uid_1': '',
+          'uid_2': '',
           'check_rfid': false,
         });
       } catch (_) {}
@@ -848,7 +858,7 @@ class _StockOutPageState extends State<StockOutPage> {
     });
   }
 
-  // Find product by scanned code (SKU/barcode) and add to selectedItems
+  // Find product by scanned code (SKU/barcode or RFID Tag ID) and add to selectedItems
   Future<void> _findAndAddProduct(String scannedCode) async {
     // Show loading
     showDialog(
@@ -871,7 +881,7 @@ class _StockOutPageState extends State<StockOutPage> {
     );
 
     try {
-      // Get all products and find by SKU match
+      // Get all products and find by SKU or RFID tag match
       final products = await ProductService.instance.getProducts(
         forceRefresh: true,
       );
@@ -881,7 +891,9 @@ class _StockOutPageState extends State<StockOutPage> {
       final matchedProduct = products.cast<ProductModel?>().firstWhere(
         (p) =>
             p!.sku.toLowerCase() == scannedCode.toLowerCase() ||
-            p.sku == scannedCode,
+            p.sku == scannedCode ||
+            p.rfidTagId?.toLowerCase() == scannedCode.toLowerCase() ||
+            p.rfidTagId == scannedCode,
         orElse: () => null,
       );
 
