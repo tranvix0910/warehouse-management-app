@@ -553,7 +553,7 @@ class _WarehouseMapPageState extends State<WarehouseMapPage>
                         ],
                       ),
                     ),
-                    const SizedBox(height: 260),
+                    const SizedBox(height: 320),
                   ],
                 ),
               ),
@@ -823,7 +823,7 @@ class _WarehouseMapPageState extends State<WarehouseMapPage>
     final statusColor = _getStatusColor(shelf.status);
 
     return Container(
-      constraints: const BoxConstraints(maxHeight: 280),
+      constraints: const BoxConstraints(maxHeight: 330),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF1E293B), Color(0xFF162032)],

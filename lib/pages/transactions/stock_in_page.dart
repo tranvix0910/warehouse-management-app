@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
@@ -22,6 +23,34 @@ class _StockInPageState extends State<StockInPage> {
   String notes = '';
   List<Map<String, dynamic>> selectedItems = [];
   bool _isSaving = false;
+
+  String _scanMode = 'RFID';
+  StreamSubscription? _rfidSubscription;
+  StreamSubscription? _qrSubscription;
+  DateTime? _lastRfidScanTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _startRfidScanning();
+    _switchScanMode('RFID');
+  }
+
+  @override
+  void dispose() {
+    _rfidSubscription?.cancel();
+    _qrSubscription?.cancel();
+    try {
+      FirebaseDatabase.instance.ref('sensors').update({
+        'check_rfid': false,
+        'check_qr': false,
+        'uid_1': "",
+        'uid_2': "",
+        'qr_data': "null",
+      });
+    } catch (_) {}
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -513,13 +542,120 @@ class _StockInPageState extends State<StockInPage> {
   // QR / Barcode Scan for Stock In
   // ========================
 
+  void _startRfidScanning() async {
+    try {
+      await FirebaseDatabase.instance.ref('sensors').update({
+        'check_rfid': true,
+        'uid_1': "",
+        'uid_2': "",
+      });
+    } catch (_) {}
+
+    final ref = FirebaseDatabase.instance.ref('sensors');
+    _rfidSubscription = ref.onValue.listen((event) async {
+      if (!mounted) return;
+      if (event.snapshot.exists && event.snapshot.value != null) {
+        final Map<dynamic, dynamic> data = event.snapshot.value as Map<dynamic, dynamic>;
+        String? rfidUid;
+
+        if (data.containsKey('uid_1') && data['uid_1'].toString().isNotEmpty && 
+            data['uid_1'].toString() != 'null' && data['uid_1'].toString() != '""') {
+          rfidUid = data['uid_1'].toString();
+        } else if (data.containsKey('uid_2') && data['uid_2'].toString().isNotEmpty && 
+            data['uid_2'].toString() != 'null' && data['uid_2'].toString() != '""') {
+          rfidUid = data['uid_2'].toString();
+        }
+
+        if (rfidUid != null) {
+          final now = DateTime.now();
+          if (_lastRfidScanTime != null && now.difference(_lastRfidScanTime!).inSeconds < 2) {
+            return;
+          }
+          _lastRfidScanTime = now;
+
+          try {
+            await FirebaseDatabase.instance.ref('sensors').update({
+              'uid_1': "",
+              'uid_2': "",
+              'check_rfid': false,
+            });
+          } catch (_) {}
+
+          if (mounted) await _findAndAddProduct(rfidUid);
+
+          Future.delayed(const Duration(seconds: 2), () async {
+            if (!mounted) return;
+            try {
+              await FirebaseDatabase.instance.ref('sensors').update({
+                'check_rfid': true,
+              });
+            } catch (_) {}
+          });
+        }
+      }
+    });
+  }
+
+  void _switchScanMode(String mode) async {
+    setState(() {
+      _scanMode = mode;
+    });
+
+    // Cancel existing QR subscription if switching
+    await _qrSubscription?.cancel();
+
+    if (mode == 'QR') {
+      try {
+        await FirebaseDatabase.instance.ref('sensors').update({
+          'check_qr': true,
+          'qr_data': 'null',
+        });
+      } catch (_) {}
+
+      final ref = FirebaseDatabase.instance.ref('sensors/qr_data');
+      _qrSubscription = ref.onValue.listen((event) async {
+        if (!mounted || _scanMode != 'QR') return;
+        if (event.snapshot.exists && event.snapshot.value != null) {
+          final qrData = event.snapshot.value.toString();
+          if (qrData.isNotEmpty &&
+              qrData != 'null' &&
+              qrData != '""' &&
+              qrData != "''") {
+            try {
+              await FirebaseDatabase.instance.ref('sensors').update({
+                'qr_data': 'null',
+              });
+            } catch (_) {}
+
+            if (mounted) await _findAndAddProduct(qrData);
+          }
+        }
+      });
+    } else {
+      // If we switch away from QR (to RFID or Camera), turn off QR but keep RFID check_rfid true
+      try {
+        await FirebaseDatabase.instance.ref('sensors').update({
+          'check_qr': false,
+        });
+      } catch (_) {}
+    }
+  }
+
   Widget _buildScanSection() {
+    final Color rfidColor = const Color(0xFF3B82F6);
+    final Color qrColor = const Color(0xFF8B5CF6);
+    final Color cameraColor = const Color(0xFFF59E0B);
+
+    Color activeColor = rfidColor;
+    if (_scanMode == 'QR') activeColor = qrColor;
+    if (_scanMode == 'Camera') activeColor = cameraColor;
+
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            const Color(0xFF8B5CF6).withOpacity(0.1),
+            activeColor.withOpacity(0.1),
             const Color(0xFF3B82F6).withOpacity(0.05),
           ],
           begin: Alignment.topLeft,
@@ -527,7 +663,7 @@ class _StockInPageState extends State<StockInPage> {
         ),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: const Color(0xFF8B5CF6).withOpacity(0.3),
+          color: activeColor.withOpacity(0.3),
           width: 1,
         ),
       ),
@@ -539,32 +675,53 @@ class _StockInPageState extends State<StockInPage> {
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF8B5CF6).withOpacity(0.2),
+                  color: activeColor.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(8),
                 ),
-                child: const Icon(
-                  Icons.qr_code_scanner,
-                  color: Color(0xFF8B5CF6),
+                child: Icon(
+                  _scanMode == 'RFID' 
+                      ? Icons.credit_card 
+                      : (_scanMode == 'QR' ? Icons.qr_code : Icons.qr_code_scanner),
+                  color: activeColor,
                   size: 20,
                 ),
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Scan to Add Product',
-                      style: TextStyle(
+                      _scanMode == 'RFID'
+                          ? 'RFID Scan Active'
+                          : (_scanMode == 'QR' ? 'QR & RFID Scan Active' : 'Camera Scan Mode (RFID Active)'),
+                      style: const TextStyle(
                         color: Colors.white,
                         fontSize: 16,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    SizedBox(height: 2),
+                    const SizedBox(height: 2),
                     Text(
-                      'Scan QR/Barcode to quickly add items',
-                      style: TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                      _scanMode == 'RFID'
+                          ? 'Scan RFID cards to add items'
+                          : (_scanMode == 'QR' ? 'Scan QR codes or RFID cards to add items' : 'Tap Camera Scan below or use RFID'),
+                      style: const TextStyle(color: Color(0xFF94A3B8), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: activeColor,
+                  shape: BoxShape.circle,
+                  boxShadow: [
+                    BoxShadow(
+                      color: activeColor.withOpacity(0.5),
+                      blurRadius: 4,
+                      spreadRadius: 2,
                     ),
                   ],
                 ),
@@ -578,8 +735,12 @@ class _StockInPageState extends State<StockInPage> {
                 child: _buildScanButton(
                   icon: Icons.qr_code_scanner,
                   label: 'Camera Scan',
-                  color: const Color(0xFFF59E0B),
-                  onTap: _scanBarcodeForStockIn,
+                  color: cameraColor,
+                  isActive: _scanMode == 'Camera',
+                  onTap: () {
+                    _switchScanMode('Camera');
+                    _scanBarcodeForStockIn();
+                  },
                 ),
               ),
               const SizedBox(width: 8),
@@ -587,8 +748,9 @@ class _StockInPageState extends State<StockInPage> {
                 child: _buildScanButton(
                   icon: Icons.qr_code,
                   label: 'QR (Firebase)',
-                  color: const Color(0xFF8B5CF6),
-                  onTap: _scanQRCodeForStockIn,
+                  color: qrColor,
+                  isActive: _scanMode == 'QR',
+                  onTap: () => _switchScanMode('QR'),
                 ),
               ),
               const SizedBox(width: 8),
@@ -596,8 +758,9 @@ class _StockInPageState extends State<StockInPage> {
                 child: _buildScanButton(
                   icon: Icons.credit_card,
                   label: 'RFID',
-                  color: const Color(0xFF3B82F6),
-                  onTap: _scanRFIDForStockIn,
+                  color: rfidColor,
+                  isActive: _scanMode == 'RFID',
+                  onTap: () => _switchScanMode('RFID'),
                 ),
               ),
             ],
@@ -611,6 +774,7 @@ class _StockInPageState extends State<StockInPage> {
     required IconData icon,
     required String label,
     required Color color,
+    required bool isActive,
     required VoidCallback onTap,
   }) {
     return InkWell(
@@ -619,20 +783,23 @@ class _StockInPageState extends State<StockInPage> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: color.withOpacity(0.15),
+          color: isActive ? color.withOpacity(0.25) : color.withOpacity(0.05),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: color.withOpacity(0.3)),
+          border: Border.all(
+            color: isActive ? color : color.withOpacity(0.15),
+            width: isActive ? 1.5 : 1,
+          ),
         ),
         child: Column(
           children: [
-            Icon(icon, color: color, size: 20),
+            Icon(icon, color: isActive ? color : color.withOpacity(0.6), size: 20),
             const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
-                color: color,
+                color: isActive ? color : color.withOpacity(0.6),
                 fontSize: 10,
-                fontWeight: FontWeight.w600,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
               ),
               textAlign: TextAlign.center,
             ),
@@ -642,7 +809,6 @@ class _StockInPageState extends State<StockInPage> {
     );
   }
 
-  // Camera barcode/QR scan
   void _scanBarcodeForStockIn() async {
     if (kIsWeb) {
       showErrorSnackTop(context, 'Barcode scanning is not supported on web');
@@ -653,203 +819,6 @@ class _StockInPageState extends State<StockInPage> {
     if (result != null && mounted) {
       await _findAndAddProduct(result);
     }
-  }
-
-  // Firebase QR scan
-  void _scanQRCodeForStockIn() async {
-    try {
-      final ref = FirebaseDatabase.instance.ref('sensors');
-      await ref.update({'check_qr': true});
-    } catch (e) {
-      if (mounted) showErrorSnackTop(context, 'Error starting QR scan');
-      return;
-    }
-
-    bool isScanning = true;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(color: Color(0xFF8B5CF6)),
-            const SizedBox(height: 16),
-            const Text(
-              'Waiting for QR Code...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Scanning QR code from Firebase',
-              style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                isScanning = false;
-                Navigator.pop(ctx);
-              },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Color(0xFFEF4444)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    final ref = FirebaseDatabase.instance.ref('sensors/qr_data');
-    late final subscription;
-
-    subscription = ref.onValue.listen((event) async {
-      if (!isScanning || !mounted) return;
-      if (event.snapshot.exists && event.snapshot.value != null) {
-        final qrData = event.snapshot.value.toString();
-        if (qrData.isNotEmpty &&
-            qrData != 'null' &&
-            qrData != '""' &&
-            qrData != "''") {
-          isScanning = false;
-          await subscription.cancel();
-
-          try {
-            await FirebaseDatabase.instance.ref('sensors').update({
-              'check_qr': false,
-              'qr_data': 'null',
-            });
-          } catch (_) {}
-
-          if (mounted && Navigator.canPop(context)) Navigator.pop(context);
-          if (mounted) await _findAndAddProduct(qrData);
-        }
-      }
-    });
-
-    // Timeout 30s
-    Future.delayed(const Duration(seconds: 30), () async {
-      if (!isScanning || !mounted) return;
-      isScanning = false;
-      await subscription.cancel();
-      try {
-        await FirebaseDatabase.instance.ref('sensors').update({
-          'check_qr': false,
-          'qr_data': 'null',
-        });
-      } catch (_) {}
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
-        showErrorSnackTop(context, 'QR Scan timeout. Please try again.');
-      }
-    });
-  }
-
-  // Firebase RFID scan
-  void _scanRFIDForStockIn() async {
-    try {
-      final ref = FirebaseDatabase.instance.ref('sensors');
-      await ref.update({'check_rfid': true});
-    } catch (e) {
-      if (mounted) showErrorSnackTop(context, 'Error starting RFID scan');
-      return;
-    }
-
-    bool isScanning = true;
-
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E293B),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const CircularProgressIndicator(color: Color(0xFF3B82F6)),
-            const SizedBox(height: 16),
-            const Text(
-              'Waiting for RFID...',
-              style: TextStyle(color: Colors.white, fontSize: 16),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Scanning RFID card from Firebase',
-              style: TextStyle(color: Color(0xFF64748B), fontSize: 12),
-            ),
-            const SizedBox(height: 16),
-            TextButton(
-              onPressed: () {
-                isScanning = false;
-                Navigator.pop(ctx);
-              },
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Color(0xFFEF4444)),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    final ref = FirebaseDatabase.instance.ref('sensors');
-    late final subscription;
-
-    subscription = ref.onValue.listen((event) async {
-      if (!isScanning || !mounted) return;
-      if (event.snapshot.exists && event.snapshot.value != null) {
-        final Map<dynamic, dynamic> data = event.snapshot.value as Map<dynamic, dynamic>;
-        
-        String? rfidUid;
-
-        // Check uid_1 first
-        if (data.containsKey('uid_1') && data['uid_1'].toString().isNotEmpty && 
-            data['uid_1'].toString() != 'null' && data['uid_1'].toString() != '""') {
-          rfidUid = data['uid_1'].toString();
-        } 
-        // Then check uid_2
-        else if (data.containsKey('uid_2') && data['uid_2'].toString().isNotEmpty && 
-            data['uid_2'].toString() != 'null' && data['uid_2'].toString() != '""') {
-          rfidUid = data['uid_2'].toString();
-        }
-
-        if (rfidUid != null) {
-          isScanning = false;
-          await subscription.cancel();
-
-          try {
-            await FirebaseDatabase.instance.ref('sensors').update({
-              'uid_1': "",
-              'uid_2': "",
-              'check_rfid': false,
-            });
-          } catch (_) {}
-
-          if (mounted && Navigator.canPop(context)) Navigator.pop(context);
-          if (mounted) await _findAndAddProduct(rfidUid);
-        }
-      }
-    });
-
-    // Timeout 30s
-    Future.delayed(const Duration(seconds: 30), () async {
-      if (!isScanning || !mounted) return;
-      isScanning = false;
-      await subscription.cancel();
-      try {
-        await FirebaseDatabase.instance.ref('sensors').update({
-          'check_rfid': false,
-          'uid_1': "",
-          'uid_2': "",
-        });
-      } catch (_) {}
-      if (mounted && Navigator.canPop(context)) {
-        Navigator.pop(context);
-        showErrorSnackTop(context, 'RFID Scan timeout. Please try again.');
-      }
-    });
   }
 
   // Find product by scanned code (SKU/barcode) and add to selectedItems
@@ -902,14 +871,39 @@ class _StockInPageState extends State<StockInPage> {
       );
 
       if (existingIdx >= 0) {
-        // Already exists, show option to update quantity
+        // Already exists, auto-increment quantity by 1
+        final currentQty = (selectedItems[existingIdx]['quantity'] is num)
+            ? (selectedItems[existingIdx]['quantity'] as num).toInt()
+            : int.tryParse('${selectedItems[existingIdx]['quantity']}') ?? 0;
+        final newQty = currentQty + 1;
+        setState(() {
+          selectedItems[existingIdx]['quantity'] = newQty;
+        });
         if (mounted) {
-          _showUpdateQuantityDialog(matchedProduct, existingIdx);
+          showSuccessSnackTop(
+            context,
+            '${matchedProduct.name} quantity increased to $newQty',
+          );
         }
       } else {
-        // Show product found dialog with quantity input
+        // First time adding, add with default quantity of 1
+        setState(() {
+          selectedItems.add({
+            'productId': matchedProduct.id,
+            'name': matchedProduct.name,
+            'sku': matchedProduct.sku,
+            'quantity': 1,
+            'image': matchedProduct.image,
+            'price': matchedProduct.price,
+            'cost': matchedProduct.cost,
+            'availableStock': matchedProduct.quantity,
+          });
+        });
         if (mounted) {
-          _showProductFoundDialog(matchedProduct);
+          showSuccessSnackTop(
+            context,
+            '${matchedProduct.name} added (qty: 1)',
+          );
         }
       }
     } catch (e) {
