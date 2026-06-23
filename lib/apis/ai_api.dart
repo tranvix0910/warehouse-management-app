@@ -16,8 +16,8 @@ class GeminiSettingsResponse {
     return GeminiSettingsResponse(
       isConfigured: json['isConfigured'] ?? false,
       apiKey: json['apiKey'],
-      updatedAt: json['updatedAt'] != null 
-          ? DateTime.parse(json['updatedAt']) 
+      updatedAt: json['updatedAt'] != null
+          ? DateTime.parse(json['updatedAt'])
           : null,
     );
   }
@@ -52,8 +52,8 @@ class AIReportData {
     return AIReportData(
       report: json['report'] ?? '',
       rawData: json['rawData'] ?? {},
-      generatedAt: json['generatedAt'] != null 
-          ? DateTime.parse(json['generatedAt']) 
+      generatedAt: json['generatedAt'] != null
+          ? DateTime.parse(json['generatedAt'])
           : DateTime.now(),
       period: json['period'] ?? 'weekly',
     );
@@ -64,16 +64,19 @@ class AIReportData {
   int get stockOutCount => rawData['transactions']?['stockOut'] ?? 0;
   int get totalStockInQty => rawData['transactions']?['totalStockInQty'] ?? 0;
   int get totalStockOutQty => rawData['transactions']?['totalStockOutQty'] ?? 0;
-  
-  double get estimatedRevenue => (rawData['financial']?['estimatedRevenue'] ?? 0).toDouble();
-  double get estimatedCost => (rawData['financial']?['estimatedCost'] ?? 0).toDouble();
-  double get estimatedProfit => (rawData['financial']?['estimatedProfit'] ?? 0).toDouble();
-  
+
+  double get estimatedRevenue =>
+      (rawData['financial']?['estimatedRevenue'] ?? 0).toDouble();
+  double get estimatedCost =>
+      (rawData['financial']?['estimatedCost'] ?? 0).toDouble();
+  double get estimatedProfit =>
+      (rawData['financial']?['estimatedProfit'] ?? 0).toDouble();
+
   List<dynamic> get topProducts => rawData['topProducts'] ?? [];
   List<dynamic> get outOfStock => rawData['inventory']?['outOfStock'] ?? [];
   List<dynamic> get lowStock => rawData['inventory']?['lowStock'] ?? [];
   int get totalProducts => rawData['inventory']?['totalProducts'] ?? 0;
-  
+
   String get dateRangeFrom => rawData['dateRange']?['from'] ?? '';
   String get dateRangeTo => rawData['dateRange']?['to'] ?? '';
   String get periodLabel => rawData['period'] ?? '';
@@ -90,7 +93,9 @@ class AIApi {
       throw Exception(response.data['message'] ?? 'Failed to get settings');
     } on DioException catch (e) {
       if (e.response != null) {
-        throw Exception(e.response!.data['message'] ?? 'Failed to get settings');
+        throw Exception(
+          e.response!.data['message'] ?? 'Failed to get settings',
+        );
       }
       throw Exception('Network error: ${e.message}');
     }
@@ -150,7 +155,8 @@ class AIApi {
     } on DioException catch (e) {
       if (e.response != null) {
         final message = e.response!.data['message'] ?? 'AI service error';
-        if (message.contains('chưa được cấu hình') || message.contains('not configured')) {
+        if (message.contains('chưa được cấu hình') ||
+            message.contains('not configured')) {
           throw ApiKeyNotConfiguredException(message);
         }
         throw Exception(message);
@@ -178,7 +184,8 @@ class AIApi {
     } on DioException catch (e) {
       if (e.response != null) {
         final message = e.response!.data['message'] ?? 'AI service error';
-        if (message.contains('chưa được cấu hình') || message.contains('not configured')) {
+        if (message.contains('chưa được cấu hình') ||
+            message.contains('not configured')) {
           throw ApiKeyNotConfiguredException(message);
         }
         throw Exception(message);
@@ -191,7 +198,7 @@ class AIApi {
 class ApiKeyNotConfiguredException implements Exception {
   final String message;
   ApiKeyNotConfiguredException(this.message);
-  
+
   @override
   String toString() => message;
 }

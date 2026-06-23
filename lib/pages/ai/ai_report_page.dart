@@ -86,7 +86,10 @@ class _AIReportPageState extends State<AIReportPage> {
             SizedBox(width: 12),
             Text(
               'AI Report',
-              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           ],
         ),
@@ -187,14 +190,18 @@ class _AIReportPageState extends State<AIReportPage> {
                   children: [
                     Icon(
                       Icons.calendar_view_week,
-                      color: _selectedPeriod == 'weekly' ? Colors.white : Colors.grey,
+                      color: _selectedPeriod == 'weekly'
+                          ? Colors.white
+                          : Colors.grey,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Tuần',
                       style: TextStyle(
-                        color: _selectedPeriod == 'weekly' ? Colors.white : Colors.grey,
+                        color: _selectedPeriod == 'weekly'
+                            ? Colors.white
+                            : Colors.grey,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -219,14 +226,18 @@ class _AIReportPageState extends State<AIReportPage> {
                   children: [
                     Icon(
                       Icons.calendar_month,
-                      color: _selectedPeriod == 'monthly' ? Colors.white : Colors.grey,
+                      color: _selectedPeriod == 'monthly'
+                          ? Colors.white
+                          : Colors.grey,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Tháng',
                       style: TextStyle(
-                        color: _selectedPeriod == 'monthly' ? Colors.white : Colors.grey,
+                        color: _selectedPeriod == 'monthly'
+                            ? Colors.white
+                            : Colors.grey,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -249,7 +260,10 @@ class _AIReportPageState extends State<AIReportPage> {
             ? const SizedBox(
                 width: 20,
                 height: 20,
-                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: Colors.white,
+                ),
               )
             : const Icon(Icons.auto_awesome),
         label: Text(_isLoading ? 'Đang tạo báo cáo...' : 'Tạo báo cáo AI'),
@@ -257,7 +271,9 @@ class _AIReportPageState extends State<AIReportPage> {
           backgroundColor: const Color(0xFF10B981),
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );
@@ -303,13 +319,18 @@ class _AIReportPageState extends State<AIReportPage> {
                   height: 48,
                   child: CircularProgressIndicator(
                     strokeWidth: 3,
-                    valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF10B981)),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      Color(0xFF10B981),
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 const Text(
                   'AI đang phân tích dữ liệu...',
-                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
                 const SizedBox(height: 8),
                 Text(
@@ -339,7 +360,11 @@ class _AIReportPageState extends State<AIReportPage> {
               color: const Color(0xFF10B981).withOpacity(0.2),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: const Icon(Icons.check_circle, color: Color(0xFF10B981), size: 24),
+            child: const Icon(
+              Icons.check_circle,
+              color: Color(0xFF10B981),
+              size: 24,
+            ),
           ),
           const SizedBox(width: 16),
           Expanded(
@@ -365,7 +390,10 @@ class _AIReportPageState extends State<AIReportPage> {
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              const Text('Tạo lúc', style: TextStyle(color: Colors.grey, fontSize: 10)),
+              const Text(
+                'Tạo lúc',
+                style: TextStyle(color: Colors.grey, fontSize: 10),
+              ),
               Text(
                 DateFormat('HH:mm').format(_reportData!.generatedAt),
                 style: const TextStyle(color: Colors.white, fontSize: 12),
@@ -389,14 +417,32 @@ class _AIReportPageState extends State<AIReportPage> {
         data: _reportData!.report,
         styleSheet: MarkdownStyleSheet(
           p: const TextStyle(color: Colors.white, fontSize: 14, height: 1.6),
-          h1: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
-          h2: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-          h3: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+          h1: const TextStyle(
+            color: Colors.white,
+            fontSize: 22,
+            fontWeight: FontWeight.bold,
+          ),
+          h2: const TextStyle(
+            color: Colors.white,
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+          ),
+          h3: const TextStyle(
+            color: Colors.white,
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
           listBullet: const TextStyle(color: Colors.white),
-          tableHead: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          tableHead: const TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.bold,
+          ),
           tableBody: const TextStyle(color: Colors.white70),
           tableBorder: TableBorder.all(color: const Color(0xFF334155)),
-          blockquote: const TextStyle(color: Colors.white70, fontStyle: FontStyle.italic),
+          blockquote: const TextStyle(
+            color: Colors.white70,
+            fontStyle: FontStyle.italic,
+          ),
           blockquoteDecoration: BoxDecoration(
             color: const Color(0xFF334155),
             borderRadius: BorderRadius.circular(4),
@@ -494,7 +540,12 @@ class _AIReportPageState extends State<AIReportPage> {
     );
   }
 
-  Widget _buildStatCard(String label, String value, IconData icon, Color color) {
+  Widget _buildStatCard(
+    String label,
+    String value,
+    IconData icon,
+    Color color,
+  ) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -553,8 +604,8 @@ class _AIReportPageState extends State<AIReportPage> {
         _buildFinancialCard(
           'Lợi nhuận ước tính',
           _currencyFormat.format(_reportData!.estimatedProfit),
-          _reportData!.estimatedProfit >= 0 
-              ? const Color(0xFF10B981) 
+          _reportData!.estimatedProfit >= 0
+              ? const Color(0xFF10B981)
               : const Color(0xFFEF4444),
           isLarge: true,
         ),
@@ -562,7 +613,12 @@ class _AIReportPageState extends State<AIReportPage> {
     );
   }
 
-  Widget _buildFinancialCard(String label, String value, Color color, {bool isLarge = false}) {
+  Widget _buildFinancialCard(
+    String label,
+    String value,
+    Color color, {
+    bool isLarge = false,
+  }) {
     return Container(
       padding: EdgeInsets.all(isLarge ? 20 : 16),
       decoration: BoxDecoration(
@@ -606,23 +662,49 @@ class _AIReportPageState extends State<AIReportPage> {
           child: Column(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 decoration: const BoxDecoration(
                   border: Border(bottom: BorderSide(color: Color(0xFF334155))),
                 ),
                 child: const Row(
                   children: [
-                    Expanded(flex: 2, child: Text('Sản phẩm', style: TextStyle(color: Colors.grey, fontSize: 12))),
-                    Expanded(child: Text('SL', style: TextStyle(color: Colors.grey, fontSize: 12), textAlign: TextAlign.center)),
-                    Expanded(child: Text('Doanh thu', style: TextStyle(color: Colors.grey, fontSize: 12), textAlign: TextAlign.right)),
+                    Expanded(
+                      flex: 2,
+                      child: Text(
+                        'Sản phẩm',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        'SL',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        'Doanh thu',
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                        textAlign: TextAlign.right,
+                      ),
+                    ),
                   ],
                 ),
               ),
               ...(_reportData!.topProducts.take(5).map((product) {
                 return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
                   decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Color(0xFF334155))),
+                    border: Border(
+                      bottom: BorderSide(color: Color(0xFF334155)),
+                    ),
                   ),
                   child: Row(
                     children: [
@@ -630,21 +712,30 @@ class _AIReportPageState extends State<AIReportPage> {
                         flex: 2,
                         child: Text(
                           product['name'] ?? '',
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                          ),
                           overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       Expanded(
                         child: Text(
                           '${product['totalQuantity'] ?? 0}',
-                          style: const TextStyle(color: Colors.white, fontSize: 13),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                          ),
                           textAlign: TextAlign.center,
                         ),
                       ),
                       Expanded(
                         child: Text(
                           _currencyFormat.format(product['revenue'] ?? 0),
-                          style: const TextStyle(color: Color(0xFF10B981), fontSize: 12),
+                          style: const TextStyle(
+                            color: Color(0xFF10B981),
+                            fontSize: 12,
+                          ),
                           textAlign: TextAlign.right,
                         ),
                       ),
@@ -660,7 +751,8 @@ class _AIReportPageState extends State<AIReportPage> {
   }
 
   Widget _buildAlertsList() {
-    final hasAlerts = _reportData!.outOfStock.isNotEmpty || _reportData!.lowStock.isNotEmpty;
+    final hasAlerts =
+        _reportData!.outOfStock.isNotEmpty || _reportData!.lowStock.isNotEmpty;
     if (!hasAlerts) return const SizedBox.shrink();
 
     return Column(
@@ -688,10 +780,19 @@ class _AIReportPageState extends State<AIReportPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Hết hàng', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w600)),
+                      const Text(
+                        'Hết hàng',
+                        style: TextStyle(
+                          color: Colors.red,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       Text(
                         _reportData!.outOfStock.join(', '),
-                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),
@@ -715,10 +816,21 @@ class _AIReportPageState extends State<AIReportPage> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Sắp hết', style: TextStyle(color: Colors.orange, fontWeight: FontWeight.w600)),
+                      const Text(
+                        'Sắp hết',
+                        style: TextStyle(
+                          color: Colors.orange,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
                       Text(
-                        _reportData!.lowStock.map((p) => '${p['name']} (${p['qty']})').join(', '),
-                        style: const TextStyle(color: Colors.white70, fontSize: 12),
+                        _reportData!.lowStock
+                            .map((p) => '${p['name']} (${p['qty']})')
+                            .join(', '),
+                        style: const TextStyle(
+                          color: Colors.white70,
+                          fontSize: 12,
+                        ),
                       ),
                     ],
                   ),

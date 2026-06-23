@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -32,7 +33,7 @@ void main() async {
   await RoleService().loadUserRole();
   runApp(
     ProviderScope(
-      child: DevicePreview(enabled: true, builder: (context) => const MyApp()),
+      child: DevicePreview(enabled: !kReleaseMode, builder: (context) => const MyApp()),
     ),
   );
 }
