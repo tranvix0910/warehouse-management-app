@@ -18,6 +18,7 @@ class ProductModel {
   final String color;
   final String processor;
   final String zone;
+  final String? rfidTagId;
 
   ProductModel({
     required this.id,
@@ -34,9 +35,14 @@ class ProductModel {
     required this.color,
     required this.processor,
     this.zone = 'Unassigned',
+    this.rfidTagId,
   });
 
   factory ProductModel.fromJson(Map<String, dynamic> json) {
+    String? parsedTagId;
+    if (json['rfidTag'] is Map) {
+      parsedTagId = json['rfidTag']['tagId']?.toString();
+    }
     return ProductModel(
       id: json['_id'] ?? '',
       name: json['productName'] ?? '',
@@ -52,6 +58,7 @@ class ProductModel {
       color: json['color'] ?? '',
       processor: json['processor'] ?? '',
       zone: json['zone'] ?? 'Unassigned',
+      rfidTagId: parsedTagId,
     );
   }
 
@@ -71,6 +78,7 @@ class ProductModel {
       'color': color,
       'processor': processor,
       'zone': zone,
+      if (rfidTagId != null) 'rfidTag': {'tagId': rfidTagId},
     };
   }
 }
